@@ -1,0 +1,48 @@
+body {
+	overflow: auto;
+}
+
+
+input {
+	width: 20em;
+}
+
+#parameter-inputs {
+	padding: 10px;
+	width: 30%;
+	min-width: 200px;
+	background-color: #707070;
+	border: 5px solid #cdd2d8;
+	color: white;
+	float: left;
+}
+
+#pitchlist {
+	margin: 20px;
+	padding: 10px;
+	background-color: #707070;
+	border: 5px solid #cdd2d8;
+	color: white;
+}
+
+#extra {
+	border:1px white solid;
+	padding: 5px;
+	margin-bottom: 5px;
+}
+
+div {
+
+}
+span {
+	color: black;
+	font-size: 12pt;
+	font-weight: bold;
+	padding: 0px;
+	margin: 0px;
+}
+
+label {
+	color: black;
+}
+

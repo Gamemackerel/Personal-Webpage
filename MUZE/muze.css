@@ -1,0 +1,49 @@
+/*
+Abraham Miller
+*/
+body {
+	text-align: center;
+	font-family: cursive;
+	font-size: 14pt;
+}
+
+/*.clickable:hover {
+	cursor: pointer;
+	color: red;
+	border-color: red;
+}*/
+
+#output {
+	font-size: 30pt;
+	color: purple;
+	background-color: #f4b342;
+	border:5px solid #f9d089;
+	border-radius: 5px;
+	width: 30%;
+	align-content: center;
+	display: none;
+}
+
+#grid {
+	width: 700px;
+	height: 700px;
+	position: relative;
+	margin: auto;
+	background-color: rgb(255, 80, 80); 
+}
+
+.tile {
+	position: absolute;
+	transition: transform 1s;
+	font-size: 40pt;
+	vertical-align: center;
+	cursor: pointer;
+}
+
+.activatedTile {
+	border: solid 8px red;
+}
+
+.unactivatedTile {
+	border: solid 2px black;
+}

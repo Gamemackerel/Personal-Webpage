@@ -1,0 +1,22 @@
+body {
+	background-color: #862cba;
+	color: gold;
+}
+
+h1 {
+	color: red;
+	font-family: helvetica;
+}
+
+h2 {
+	color: #ba8a2c;
+	font-family: verdana;
+}
+
+a {
+	color: orange;
+}
+
+a:visited {
+	color: yellow;
+}

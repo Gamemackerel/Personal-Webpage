@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<!--
+Abraham Miller
+CSE154 AD
+This html document defines the content of a speedreader
+webpage which allows a user to practice their speed reading abilities.
+The html defines sections for user text input and controls on the speedreading program
+as well as titles and a reader box
+-->
+<html>
+	<head>
+		<title>SpeedReader</title>
+		<link rel="stylesheet" type="text/css" href="speedreader.css">
+		<script type="text/javascript" src="speedreader.js"></script>
+	</head>
+	<body>
+			<h1>SpeedReader</h1>
+
+			<div id="reader"></div>
+	
+			<fieldset>
+				<legend>Play Controls:</legend>
+				<input type="button" id="start" value="Start">
+				<input type="button" id="stop" value="Stop" disabled="">
+			</fieldset>
+
+			<fieldset>
+				<legend>Speed:</legend>
+				<select>
+					<option value="500">50 wpm</option>
+					<option value="200">300 wpm</option>
+					<option value="171" selected>350 wpm</option>
+					<option value="150">400 wpm</option>
+					<option value="133">450 wpm</option>
+					<option value="120">500 wpm</option>
+				</select>
+			</fieldset>
+			
+			<fieldset>
+				<legend>Size:</legend>
+				<label><input type="radio" name="size" id="medium" checked /> Medium</label>
+				<label><input type="radio" name="size" id="big" /> Big</label>
+				<label><input type="radio" name="size" id="bigger" /> Bigger</label>
+			</fieldset>
+
+			<fieldset>
+				<legend>Input Text</legend>
+				<textarea rows="10" cols="80"></textarea>
+			</fieldset>
+
+			<div id="validators">
+				<a href="https://webster.cs.washington.edu/validate-html.php"><img src="https://webster.cs.washington.edu/images/w3c-html-blue.png" alt="HTML validator"></a>	
+				<a href="https://webster.cs.washington.edu/validate-css.php"><img src="https://webster.cs.washington.edu/images/w3c-css-blue.png" alt="CSS validator"></a>	
+				<a href="https://webster.cs.washington.edu/jslint/?referer"><img src="https://webster.cs.washington.edu/images/w3c-js-blue.png" alt="Javascript validator"></a>
+			</div>
+	</body>
+</html>

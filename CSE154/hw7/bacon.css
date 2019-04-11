@@ -1,0 +1,52 @@
+/*
+Abraham Miller
+CSE154 AD
+This stylesheet defines the style for all pages on the mymdb website.
+*/
+
+body {
+	background-image: url('http://a.fastcompany.net/multisite_files/fastcompany/imagecache/1280/poster/2013/11/3021740-poster-1280-open-source-honey-bee-hive.jpg');
+	text-align: center;
+}
+
+body, input {
+	font-family: Helvetica, sans-serif;
+	font-size: 12pt;
+}
+
+#banner, #w3c {
+	padding: 10px;
+}
+
+#banner, #w3c, table, fieldset {
+	background-color: #ffd230;
+}
+
+#frame {
+	width: 80%;
+	margin: 0 auto;
+	text-align: left;
+}
+
+#frame, #main, fieldset {
+	border: 2px solid black;
+}
+
+#main {
+	background-color: #FFFFFF;
+	text-align: center;
+	border-right-width: 0;
+	border-left-width: 0;
+}
+
+table, fieldset {
+	text-align: center;
+	margin: 10px auto;
+	width: 60%;	
+	border-collapse: collapse;
+}
+
+tr:nth-child(even) {
+   background-color: black;
+   color: #ffd230;
+}

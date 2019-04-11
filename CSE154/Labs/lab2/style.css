@@ -1,0 +1,50 @@
+body{
+	background-image: url(spatula-background.gif);
+	margin-left: 10%;
+	margin-right: 10%;
+	float: center;
+}
+
+#content {
+	border: 10px solid white;
+	background-color: white;
+	overflow: hidden;
+}
+
+#friends {
+	float: right;
+}
+
+#post-area {
+	float: right;
+}
+
+.post {
+	border: 4px solid #C2E9E9;
+	border-radius: 15px;
+	background-color: #e8fbfb;
+	padding: 5px;
+	margin-top: 10px;
+	overflow: hidden;
+}
+
+.post p {
+	text-align: justify-all;
+}
+
+.post img {
+	float: right;
+}
+
+#titles {
+	background-color: #A8F0F0;
+	text-align: right;
+}
+
+#subtitle {
+	font-size: 14pt;	
+}
+
+.date {
+	border-bottom: 2px dashed blue;
+}

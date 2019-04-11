@@ -1,0 +1,25 @@
+/*
+Abraham Miller
+Section AD
+This stylesheet is part of an assignment for a small recipe website containing
+a fleshed out recipe page for a Lemon Meringue Pie
+In paticular, this stylesheet defines the style of the home page of the recipe website
+*/
+
+a {
+	color: #ff00e6;
+}
+
+a:visited {
+	color: #f5aeee;
+}
+
+body {
+	background-color: #750082;
+	font-family: helvetica;
+	color: #ffb300; 
+}
+
+h1 {
+	color: #ff7300;
+}

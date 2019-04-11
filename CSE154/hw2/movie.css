@@ -1,0 +1,132 @@
+/*
+Abraham Miller
+This stylesheet defines the style of a movie review page using CSS.
+It specifies background images, colors, fonts,
+and orginization of content on the page.
+Used for the second CSE154 assignment. 
+*/
+body {
+	background-image: url("https://webster.cs.washington.edu/images/moviebg.png");
+	font-size: 10pt;
+	font-family:Arial, Helvetica, sans-serif;
+	text-align: center;
+	margin: 0;
+}
+
+.critic {
+	margin-bottom: 20pt;
+}
+
+.critic, #content, .quotebox, #review-section{
+	overflow: auto;
+}
+
+.column {
+	float: left;
+	width: 47%;
+	margin-left: 2%;
+}
+
+#content {
+	width: 800px;
+	background-color: #EEEEEE;
+	box-shadow: 5px 5px 5px gray;
+	margin: 0 auto;
+	text-align: left;
+}
+
+#content, .quotebox {
+	border-radius: 20px;
+}
+
+dl {
+	padding: 10pt;
+	padding-top: 0;
+	margin: 0;
+}
+
+dt {
+	font-weight: bold;
+	padding-top: 10pt;
+}
+
+em {
+	font-style: italic;
+}
+
+h1 {
+	margin-top: 72px;
+	font-size: 24pt;
+	font-weight: bold;
+	text-shadow: 3px 3px #999999;
+}
+
+h1, .quotebox {
+	font-family: Georgia, "Times New Roman", serif;
+}
+
+#overview-section {
+	width: 250px;
+	float:right;
+}
+
+#pagenumber {
+	clear:both;
+	margin: 0;
+	padding: 5px;
+	text-align: center; 
+}
+
+#pagenumber, #overview-section {
+	background-color: #A2B964;
+}
+
+.quotebox {
+	background-color: #FFFFFF;
+	border: solid 2px #CCCCCC;
+	padding: 8px;
+}
+
+.quotebox img, .critic img {
+	margin-right: 5px;
+	float: left;
+}
+
+#rancidbanner {
+	background-image: url("https://webster.cs.washington.edu/images/rancidbannerbg.png");
+	position: fixed;
+	width: 100%;
+	top: 0;
+}
+
+#rancidbanner img, #review-header img {
+	vertical-align: bottom;
+}
+
+#review-header {
+	background-image: url(https://webster.cs.washington.edu/images/rottenlargebg.png);
+	font-size: 48pt;
+	color: red;
+	font-weight: bold;
+}
+
+#review-section {
+	width: 550px;
+}
+
+ul {
+	list-style-type: none;
+	padding: 0;
+}
+
+#validators {
+	text-align: right;
+}
+
+#validators img {
+	opacity: 0.5;
+}
+
+#validators img:hover {
+	opacity: 1;
+} 

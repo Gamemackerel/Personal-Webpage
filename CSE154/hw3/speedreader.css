@@ -1,0 +1,87 @@
+/*
+Abraham Miller
+CSE154 AD
+This CSS file defines the style for a speedreader webpage outlined in
+speedreader.html. It defines the page font, colors, element sizes, and display orginization.
+*/
+body {
+	background-color: #EAF6F6;
+	text-align: center;
+	font-family: Garamond, serif;
+	font-size: 12pt;
+}
+
+body, #start, #stop {
+	font-family: Garamond, serif;
+	font-size: 12pt;
+}
+
+
+fieldset {
+	display: inline-block;
+	border: none;
+	vertical-align: top;
+}
+
+img {
+	width: 70px;
+}
+
+#start, #stop {
+	width: 70px;
+	border: solid grey 1px;
+	background-color: white;
+}
+
+#start, #stop, textarea {
+	border: solid grey 1px;
+}
+
+#start:disabled, #stop:disabled{
+	background-color: lightgray;
+}
+
+input[type="button"]:disabled {
+	background-color: lightgray;
+}
+
+legend {
+	text-align: left;
+	border-bottom: 1px solid #8EBEBE;
+	padding: 2px;
+	width: 100%;
+	font-size: inherit;
+	font-weight: bold;
+}
+
+#reader {
+	margin: 0 auto;
+	width: 80%;
+	height: 100px;
+	font-family: monospace;
+	font-weight: bold;
+	line-height: 100px;
+	border: 2px solid #8EBEBE;
+	border-radius: 5px;
+	background-color: #FFFFFF;
+	text-align: center;
+}
+
+.reader-big {
+	font-size: 48pt;
+}
+
+.reader-bigger {
+	font-size: 60pt;
+}
+
+.reader-medium {
+	font-size: 36pt;
+}
+
+#validators {
+	position: absolute;
+	text-align: left;
+	bottom: 0px;
+	left: 5px;
+}

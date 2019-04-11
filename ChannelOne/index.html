@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" type="text/css" href="stylesheet.css">
+
+    <script src="jquery-3.2.0.min.js" type="text/javascript"></script>
+    <script src="jquery-ui.min.js" type="text/javascript"></script>
+    <script src="oneC.js" type="text/javascript"></script>
+    <title>Channel One</title>
+  </head>
+  <body>
+  <div class="video-background">
+      <div class="video-foreground" id="vf">
+        <iframe id="frame"> src="" frameborder="0" allowfullscreen enablejsapi="1"></iframe>        
+      </div>
+  </div>
+
+  <div id="vidtop-content">
+    <div id="upload" class="upload1">
+    </div>
+    <div id="vol" class="half">
+    </div>
+
+    <div class="vid-info" id="uploadDiv">
+      <h1>Add Video</h1>
+      <p>Provide a valid Youtube URL below - your video will appear in the front of the queue and the last video in the queue will be removed</p>
+      <input type="text" id="url">
+      <button id="submit">submit</button>
+    </div>
+    <div id="introOuterDiv" class="vid-info">
+    </div>
+    <div id="intro" class="vid-info">
+      <h1>Channel One</h1>
+      <p>
+        This site has ten videos ready for your viewing pleasure. </br> </br> The playlist is user curated - anyone can add a video using the UI accessible from the top right. </br></br> Press <em class="emb">spacebar</em> to skip </br> Press <em class="emb">f11</em> for full screen 
+        </br> </br>
+      </p>
+      <button id="start">Go!</button>
+    </div>
+
+    <div id="statusBox" class="vid-info">
+      <p id="status"></p>
+    </div>
+  </div>
+  </body>
+</html>

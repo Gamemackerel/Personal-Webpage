@@ -1,0 +1,51 @@
+/*
+Abraham Miller
+Section AD
+This stylesheet is part of an assignment for a small recipe website containing
+a fleshed out recipe page for a Lemon Meringue Pie
+In paticular, this stylesheet defines the style of the Pie recipe page.
+*/
+
+a {
+	color:#A4A400;
+}
+
+abbr {
+    text-decoration: underline;
+}
+
+blockquote {
+	background-color: #FFFFA8;
+	font-style: italic;	
+}
+
+body {
+	background-image: url("https://webster.cs.washington.edu/images/silverware.jpg");
+	background-color: white;
+	color: #404040;
+	font-size: 11pt;
+	font-family: Georgia, Garamond, serif;
+}
+
+h1 {
+	text-align: center;
+	font-size: 22pt;
+	font-weight: bold;
+}
+
+h2 {
+	text-align: left;
+	font-size: 18pt;
+	font-weight: normal;
+}
+
+h1, h2 {
+	color: #A4A400;
+	background-color: #F0F0F0;
+	font-family: "Lucida Sans Unicode", Helvetica, Arial, sans-serif; 
+	text-decoration: underline;
+}
+
+ul {
+	list-style-image: url(https://webster.cs.washington.edu/images/pie-icon.gif);
+}

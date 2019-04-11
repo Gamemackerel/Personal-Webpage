@@ -1,0 +1,44 @@
+/*
+Abraham Miller
+CSE154 AD
+This CSS stylesheet defines the style for a fifteen puzzle website
+as mandated for the fourth homework assignment. 
+*/
+body {
+	text-align: center;
+	font-family: cursive;
+	font-size: 14pt;
+}
+
+.clickable:hover {
+	cursor: pointer;
+	color: red;
+	border-color: red;
+}
+
+#output {
+	font-size: 30pt;
+	color: purple;
+	background-color: #f4b342;
+	border:5px solid #f9d089;
+	border-radius: 5px;
+	width: 30%;
+	align-content: center;
+	display: none;
+}
+
+#puzzlearea {
+	width: 400px;
+	height: 400px;
+	position: relative;
+	margin: auto;
+}
+
+.tile {
+	position: absolute;
+	transition: transform 1s;
+	background-image: url('background.jpg');
+	border: solid 5px black;
+	font-size: 40pt;
+	vertical-align: center;
+}
