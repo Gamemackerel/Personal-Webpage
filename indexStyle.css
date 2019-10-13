@@ -3,10 +3,12 @@ body {
     padding-bottom: 20px;
     padding-top: 20px;
 }
-.navbar {
-    margin-bottom: 20px;
+.navcontainer {
+    padding-top: 50px;
 }
-
+.jumbotron {
+	background-color: gainsboro;
+}
 li {
 	text-align: center;
 	font-style: bold;
