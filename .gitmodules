@@ -1,0 +1,4 @@
+[submodule "Jammer"]
+	path = Jammer
+	url = https://github.com/Gamemackerel/Jammer.git
+
