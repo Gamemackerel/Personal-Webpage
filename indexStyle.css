@@ -14,3 +14,7 @@ li {
 	font-style: bold;
 	font-size: 20pt;
 }
+
+.btn-primary {
+	margin: 5px
+}
