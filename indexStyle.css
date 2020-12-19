@@ -6,15 +6,16 @@ body {
 .navcontainer {
     padding-top: 50px;
 }
-.jumbotron {
-	background-color: gainsboro;
-}
 li {
-	text-align: center;
 	font-style: bold;
 	font-size: 20pt;
 }
 
 .btn-primary {
 	margin: 5px
+}
+
+.right {
+	text-align: right;
+	float: right;
 }
