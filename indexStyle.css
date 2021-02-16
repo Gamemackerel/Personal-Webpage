@@ -1,21 +1,13 @@
-
-body {
-    padding-bottom: 20px;
-    padding-top: 20px;
-}
-.navcontainer {
-    padding-top: 50px;
-}
 li {
 	font-style: bold;
 	font-size: 20pt;
+	padding-bottom: 5px;
 }
 
-.btn-primary {
-	margin: 5px
+small {
+	font-size:10pt;
 }
 
-.right {
-	text-align: right;
-	float: right;
+.nav-item {
+	padding-left: 30px;
 }
