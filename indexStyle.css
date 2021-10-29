@@ -1,4 +1,4 @@
-li {
+.jumbotron li {
 	padding-bottom: 5px;
 	font-size: 20pt;
 }
@@ -8,5 +8,12 @@ small {
 }
 
 .nav-item {
-	padding-left: 30px;
+	padding-top: 20px;
+	font-size: 20pt;
+	padding-bottom: 0;
+}
+
+.title {
+	font-size: 25pt;
+	color: rgb(80, 80, 80);
 }
