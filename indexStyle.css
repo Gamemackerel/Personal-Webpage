@@ -1,6 +1,15 @@
 .jumbotron li {
-	padding-bottom: 5px;
-	font-size: 20pt;
+	padding-top: 15px;
+	font-size: 15pt;
+}
+
+.jumbotron p {
+	font-size: 10pt;
+}
+
+.jumbotron h4 {
+	padding-top: 0;
+	margin-top: 0;
 }
 
 small {
