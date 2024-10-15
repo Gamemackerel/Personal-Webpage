@@ -35,3 +35,8 @@ small {
 	border: 1px solid black;
 	border-radius: 10%;
 }
+
+.resume {
+	padding: 10px;
+	border: 1px solid black;
+}
