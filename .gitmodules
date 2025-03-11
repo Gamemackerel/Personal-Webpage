@@ -2,3 +2,6 @@
 	path = Jammer
 	url = https://github.com/Gamemackerel/Jammer.git
 
+[submodule "mirrormirror"]
+	path = mirrormirror
+	url = git@github.com:Gamemackerel/mirrormirror.git
