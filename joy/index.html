@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happiness Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+        }
+        #counter {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div id="counter">Happiness Level: 0</div>
+    <script>
+        let happyWords = [];
+        let happyCounter = 0;
+        let swimOffset = 0;
+
+        // State management for sad sequence
+        let sadState = 'normal'; // 'normal', 'tears', 'waiting', 'sunburst'
+        let sadAnimationTimer = 0;
+        let tearY = 0;
+        let sunburstProgress = 0;
+        let sadText = null;
+        let backgroundTransition = 1.0; // 1.0 = fully normal, 0.0 = fully sad
+
+        // Happy color palettes - pastels and brights
+        const happyColors = [
+            [255, 182, 193], // Light Pink
+            [255, 218, 185], // Peach
+            [255, 255, 224], // Light Yellow
+            [144, 238, 144], // Light Green
+            [173, 216, 230], // Light Blue
+            [221, 160, 221], // Plum
+            [255, 192, 203], // Pink
+            [255, 160, 122], // Light Salmon
+            [135, 206, 235], // Sky Blue
+            [255, 215, 0],   // Gold
+            [127, 255, 212], // Aquamarine
+            [255, 182, 193], // Light Pink
+            [255, 248, 220], // Cornsilk
+            [240, 128, 128], // Light Coral
+            [152, 251, 152], // Pale Green
+            [175, 238, 238], // Pale Turquoise
+            [255, 99, 71],   // Tomato
+            [255, 140, 0],   // Dark Orange
+            [255, 20, 147],  // Deep Pink
+            [0, 255, 127],   // Spring Green
+            [70, 130, 180],  // Steel Blue
+            [255, 105, 180], // Hot Pink
+            [255, 69, 0],    // Orange Red
+            [50, 205, 50],   // Lime Green
+            [255, 215, 0]    // Bright Gold
+        ];
+
+        // Text variants with weighted probability
+        const happyTexts = {
+            common: ["Happy", "happy"], // 70% combined
+            rare: ["HAPPY!!!!!", ":)", "happity hap", "(: Happy.", "Things are good!", "God is love", "loving life", "I'm so lucky", "laughter and friendship"] // 30% split evenly
+        };
+
+        function getRandomHappyText() {
+            // 1/500 chance for "Sad"
+            if (random() < 0.002 && sadState === 'normal') {
+                initiateSadSequence();
+                return null; // Don't create a happy text
+            }
+
+            // 70% chance for common texts (Happy/happy)
+            if (random() < 0.7) {
+                return random(happyTexts.common);
+            } else {
+                // 30% chance for rare texts (split evenly among them)
+                return random(happyTexts.rare);
+            }
+        }
+
+        function initiateSadSequence() {
+            sadState = 'tears';
+            sadAnimationTimer = 0;
+            tearY = 0;
+            backgroundTransition = 0.0;
+
+            // Create the Sad text
+            sadText = {
+                x: width / 2,
+                y: height / 2,
+                text: "Sad",
+                size: 120,
+                opacity: 255
+            };
+        }
+
+        // Class for each "Happy" text
+        class HappyText {
+            constructor(x, y, textOverride = null) {
+                this.x = x;
+                this.y = y;
+                this.angle = random(TWO_PI); // Fully random rotation (0 to 360 degrees)
+                this.color = random(happyColors);
+                this.size = random(20, 80);
+                this.opacity = 255;
+                this.fadeSpeed = 0.5;
+                this.wobble = random(1000);
+                this.wobbleSpeed = random(0.01, 0.03);
+                this.text = textOverride || getRandomHappyText();
+                this.visible = true;
+            }
+
+            update() {
+                if (sadState === 'tears' && tearY > this.y) {
+                    this.visible = false;
+                }
+
+                this.opacity -= this.fadeSpeed;
+                this.wobble += this.wobbleSpeed;
+                // Slight floating effect
+                this.y -= 0.2;
+                this.x += sin(this.wobble) * 0.3;
+            }
+
+            display() {
+                if (!this.visible) return;
+
+                push();
+                translate(this.x, this.y);
+                rotate(this.angle + sin(this.wobble) * 0.05);
+
+                // Add glow effect
+                drawingContext.shadowColor = `rgba(${this.color[0]}, ${this.color[1]}, ${this.color[2]}, ${this.opacity/255 * 0.8})`;
+                drawingContext.shadowBlur = 20;
+
+                fill(this.color[0], this.color[1], this.color[2], this.opacity);
+                noStroke();
+                textAlign(CENTER, CENTER);
+                textSize(this.size);
+                textStyle(BOLD);
+                text(this.text, 0, 0);
+                pop();
+            }
+
+            isDead() {
+                return this.opacity <= 0;
+            }
+        }
+
+        function setup() {
+            createCanvas(windowWidth, windowHeight);
+            textFont('Arial');
+        }
+
+        function draw() {
+            // Handle sad sequence states
+            if (sadState !== 'normal' && sadState !== 'sunburst') {
+                drawSadSequence();
+                return;
+            }
+
+            if (sadState === 'sunburst') {
+                drawSunburstSequence();
+                return;
+            }
+
+            // Normal happy mode
+            // Calculate swim effect based on happiness level
+            swimOffset += 0.02;
+            let swimAmount = min(happyCounter * 0.5, 20);
+
+            push();
+            // Apply swimming transformation to entire canvas
+            translate(
+                sin(swimOffset) * swimAmount,
+                cos(swimOffset * 0.7) * swimAmount
+            );
+
+            // Dynamic gradient background that gets brighter with more happiness
+            drawBackground();
+
+            pop(); // End swimming transformation for background
+
+            push();
+            // Reapply swimming for text elements
+            translate(
+                sin(swimOffset) * swimAmount,
+                cos(swimOffset * 0.7) * swimAmount
+            );
+
+            // Update and display all happy texts
+            for (let i = 0; i < happyWords.length; i++) {
+                happyWords[i].update();
+                happyWords[i].display();
+            }
+
+            // Remove faded texts in a separate pass
+            for (let i = happyWords.length - 1; i >= 0; i--) {
+                if (happyWords[i].isDead()) {
+                    happyWords.splice(i, 1);
+                    // Reduce happiness when a text fades away
+                    happyCounter = max(0, happyCounter - 1);
+                }
+            }
+
+            pop();
+
+            // Update counter display
+            document.getElementById('counter').textContent = `Happiness Level: ${happyCounter}`;
+            if (happyCounter > 0) {
+                document.getElementById('counter').style.color = `hsl(${(happyCounter * 10) % 360}, 100%, 75%)`;
+            } else {
+                document.getElementById('counter').style.color = 'white';
+            }
+        }
+
+        function drawSadSequence() {
+            // Draw grey-blue gradient background
+            for (let i = 0; i <= height; i++) {
+                let inter = map(i, 0, height, 0, 1);
+                let fadeAmount = min(tearY / height, 1);
+
+                // Blend from happy colors to grey-blue
+                let r = lerp(135, 80, inter) * fadeAmount + (1 - fadeAmount) * 200;
+                let g = lerp(150, 100, inter) * fadeAmount + (1 - fadeAmount) * 200;
+                let b = lerp(180, 140, inter);
+
+                stroke(r, g, b);
+                line(0, i, width, i);
+            }
+
+            // Display remaining happy texts (those not washed away)
+            for (let i = 0; i < happyWords.length; i++) {
+                happyWords[i].update();
+                happyWords[i].display();
+            }
+
+            // Draw psychedelic tears
+            if (sadState === 'tears' || sadState === 'waiting') {
+                let currentTearY = sadState === 'tears' ? tearY : height + 100;
+
+                if (sadState === 'tears') {
+                    tearY += 5;
+
+                    // Count down happiness as tears progress
+                    if (happyCounter > 0 && frameCount % 3 === 0) {
+                        happyCounter = max(0, Math.floor(happyCounter * 0.95)); // Exponential decay
+                        if (tearY > height * 0.8) {
+                            happyCounter = 0; // Ensure it reaches 0 near the end
+                        }
+                    }
+                }
+
+                push();
+                // Create complex tear shape
+                for (let x = 0; x < width; x += 20) {
+                    let waveHeight = 50;
+                    let y = currentTearY + sin(x * 0.02 + frameCount * 0.1) * waveHeight;
+
+                    // Psychedelic gradient tears
+                    let hue = (x + frameCount * 2) % 360;
+                    fill(80, 100, 140, 150);
+                    noStroke();
+
+                    // Create flowing tear shapes
+                    beginShape();
+                    vertex(x, y);
+                    bezierVertex(
+                        x + 10, y + random(-20, 20),
+                        x + 20, y + random(-30, 30),
+                        x + 30, y
+                    );
+                    vertex(x + 30, 0);
+                    vertex(x, 0);
+                    endShape(CLOSE);
+
+                    // Add ripple effects
+                    for (let j = 0; j < 3; j++) {
+                        let rippleY = y - j * 30;
+                        let rippleAlpha = map(j, 0, 3, 100, 0);
+                        fill(100, 120, 160, rippleAlpha);
+                        ellipse(x + 15, rippleY, 30 + j * 10, 10);
+                    }
+                }
+                pop();
+
+                if (sadState === 'tears' && tearY > height + 100) {
+                    sadState = 'waiting';
+                    // Clear all happy words
+                    happyWords = [];
+                    happyCounter = 0;
+                }
+            }
+
+            // Draw Sad text on top
+            if (sadText) {
+                push();
+                textAlign(CENTER, CENTER);
+                textSize(sadText.size);
+                textStyle(BOLD);
+                fill(30, 50, 100, sadText.opacity);
+
+                // Add dark shadow
+                drawingContext.shadowColor = 'rgba(0, 0, 50, 0.8)';
+                drawingContext.shadowBlur = 30;
+
+                text(sadText.text, sadText.x, sadText.y);
+                pop();
+            }
+
+            // Update counter display during sad sequence
+            document.getElementById('counter').textContent = `Happiness Level: ${happyCounter}`;
+            if (happyCounter > 0) {
+                document.getElementById('counter').style.color = `hsl(${(happyCounter * 10) % 360}, 100%, 75%)`;
+            } else {
+                document.getElementById('counter').style.color = 'white';
+            }
+        }
+
+        function drawSunburstSequence() {
+            // Draw mixed background - fade from grey-blue to happy colors
+            for (let i = 0; i <= height; i++) {
+                let inter = map(i, 0, height, 0, 1);
+
+                // Sad colors
+                let sadR = lerp(80, 100, inter);
+                let sadG = lerp(100, 120, inter);
+                let sadB = lerp(140, 160, inter);
+
+                // Happy colors
+                let happyTopR = 135 + min(happyCounter * 2, 120);
+                let happyTopG = 206 + min(happyCounter * 1, 49);
+                let happyTopB = 235 + min(happyCounter * 0.5, 20);
+                let happyBottomR = 255;
+                let happyBottomG = 182 + min(happyCounter * 2, 73);
+                let happyBottomB = 193 + min(happyCounter * 2, 62);
+
+                let happyR = lerp(happyTopR, happyBottomR, inter);
+                let happyG = lerp(happyTopG, happyBottomG, inter);
+                let happyB = lerp(happyTopB, happyBottomB, inter);
+
+                // Blend between sad and happy based on transition progress
+                let r = lerp(sadR, happyR, backgroundTransition);
+                let g = lerp(sadG, happyG, backgroundTransition);
+                let b = lerp(sadB, happyB, backgroundTransition);
+
+                stroke(r, g, b);
+                line(0, i, width, i);
+            }
+
+            // Draw piercing sunburst
+            sunburstProgress += 0.02;
+
+            // Fade in the happy background
+            backgroundTransition = min(1.0, backgroundTransition + 0.01);
+
+            push();
+            translate(width/2, height/2);
+
+            for (let i = 0; i < 24; i++) {
+                rotate(TWO_PI / 24);
+
+                // Sharp, bright rays
+                fill(255, 255, 100, 200 - sunburstProgress * 100);
+                noStroke();
+
+                let rayLength = sunburstProgress * width;
+                let rayWidth = random(5, 20);
+
+                beginShape();
+                vertex(0, 0);
+                vertex(-rayWidth/2, rayLength);
+                vertex(0, rayLength + 50);
+                vertex(rayWidth/2, rayLength);
+                endShape(CLOSE);
+            }
+            pop();
+
+            // Fade out sad text
+            if (sadText) {
+                sadText.opacity = max(0, 255 - sunburstProgress * 500);
+                push();
+                textAlign(CENTER, CENTER);
+                textSize(sadText.size);
+                textStyle(BOLD);
+                fill(30, 50, 100, sadText.opacity);
+                text(sadText.text, sadText.x, sadText.y);
+                pop();
+            }
+
+            // Display happy texts
+            for (let i = 0; i < happyWords.length; i++) {
+                happyWords[i].update();
+                happyWords[i].display();
+            }
+
+            if (sunburstProgress > 2) {
+                sadState = 'normal';
+                sunburstProgress = 0;
+                sadText = null;
+                backgroundTransition = 1.0; // Ensure fully transitioned
+            }
+        }
+
+        function drawBackground() {
+            // Base colors that get more vibrant with happiness
+            let topR = 135 + min(happyCounter * 2, 120);
+            let topG = 206 + min(happyCounter * 1, 49);
+            let topB = 235 + min(happyCounter * 0.5, 20);
+
+            let bottomR = 255;
+            let bottomG = 182 + min(happyCounter * 2, 73);
+            let bottomB = 193 + min(happyCounter * 2, 62);
+
+            // Create gradient
+            for (let i = 0; i <= height; i++) {
+                let inter = map(i, 0, height, 0, 1);
+                let r = lerp(topR, bottomR, inter);
+                let g = lerp(topG, bottomG, inter);
+                let b = lerp(topB, bottomB, inter);
+
+                // Add subtle rainbow overlay when happiness > 200
+                if (happyCounter > 200) {
+                    let rainbowStrength = min((happyCounter - 200) / 100, 1.0) * 0.3; // Max 30% blend
+                    let rainbowHue = (i * 0.5 + frameCount * 0.2) % 360;
+
+                    // Convert HSB to RGB for rainbow effect
+                    push();
+                    colorMode(HSB, 360, 100, 100);
+                    let rainbowColor = color(rainbowHue, 70, 100);
+                    pop();
+
+                    // Blend rainbow with base colors
+                    r = lerp(r, red(rainbowColor), rainbowStrength);
+                    g = lerp(g, green(rainbowColor), rainbowStrength);
+                    b = lerp(b, blue(rainbowColor), rainbowStrength);
+                }
+
+                stroke(r, g, b);
+                line(-50, i, width + 50, i);
+            }
+        }
+
+        function keyPressed() {
+            // Block input only during tears animation
+            if (sadState === 'tears') {
+                return false;
+            }
+
+            // Special behavior for waiting state - trigger sunburst
+            if (sadState === 'waiting') {
+                sadState = 'sunburst';
+                sunburstProgress = 0;
+
+                // Add a happy text to symbolize recovery
+                let x = random(100, width - 100);
+                let y = random(100, height - 100);
+                let newHappy = new HappyText(x, y, "Happy");
+                happyWords.push(newHappy);
+                happyCounter++;
+                return false;
+            }
+
+            // Normal happy text generation
+            let x = random(100, width - 100);
+            let y = random(100, height - 100);
+            let textToUse = getRandomHappyText();
+
+            if (textToUse !== null) {
+                happyWords.push(new HappyText(x, y, textToUse));
+                happyCounter++;
+            }
+
+            // Limit the array size to prevent performance issues
+            if (happyWords.length > 150) {
+                happyWords.splice(0, 1);
+            }
+
+            // Prevent default key behavior
+            return false;
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
+    </script>
+</body>
+</html>
