@@ -453,7 +453,8 @@
             }
         }
 
-        function keyPressed() {
+
+        function handleInteraction() {
             // Block input only during tears animation
             if (sadState === 'tears') {
                 return false;
@@ -490,6 +491,15 @@
 
             // Prevent default key behavior
             return false;
+
+        }
+
+        function mousePressed() {
+            handleInteraction();
+        }
+
+        function keyPressed() {
+            handleInteraction();
         }
 
         function windowResized() {
