@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Birdeater</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #0a0a0a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+        }
+        #gameContainer {
+            position: relative;
+        }
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            color: white;
+            pointer-events: none;
+            z-index: 10;
+        }
+        #score {
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        #webHealth {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 20px;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.5);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        #webHealthBar {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff00, #ffff00);
+            transition: width 0.3s ease, background 0.3s ease;
+            width: 100%;
+        }
+        #webHealthBar.danger {
+            background: linear-gradient(90deg, #ff0000, #ff6600);
+        }
+        #modeIndicator {
+            position: absolute;
+            top: 60px;
+            left: 20px;
+            font-size: 16px;
+            color: #00ff00;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        #buildHint {
+            position: absolute;
+            top: 90px;
+            left: 20px;
+            font-size: 14px;
+            color: #aaaaaa;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="ui">
+            <div id="score">Score: 0</div>
+            <div id="modeIndicator">Mode: HUNT</div>
+            <div id="buildHint">Hold SHIFT to build web</div>
+            <div id="webHealth">
+                <div id="webHealthBar"></div>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Game variables
+        let spider;
+        let webNodes = [];
+        let webLines = [];
+        let score = 0;
+        let webHealth = 100;
+        let mode = 'HUNT'; // HUNT or BUILD or SPINNING
+        let shiftPressed = false; // Track shift key state
+
+        // Build mode variables
+        let buildPath = []; // Array of nodes to visit
+        let hoveredNode = null;
+        let hoveredLine = null;
+        let spinningProgress = 0; // For animation
+        let currentSpinSegment = 0; // Which segment we're spinning
+
+        // Web configuration
+        const RADIAL_SPOKES = 8;
+        const CIRCULAR_RINGS = 5;
+        const WEB_RADIUS = 250;
+        const NODE_SNAP_RADIUS = 15;
+        const LINE_SNAP_DISTANCE = 10;
+        const MAX_CONNECTIONS = 8;
+        const SPIDER_SPEED = 2; // pixels per frame
+        const SPIDER_SPIN_SPEED = 3; // pixels per frame when spinning web
+
+        class WebNode {
+            constructor(x, y, id) {
+                this.x = x;
+                this.y = y;
+                this.id = id;
+                this.connections = new Set();
+            }
+
+            canConnect() {
+                return this.connections.size < MAX_CONNECTIONS;
+            }
+
+            display() {
+                push();
+
+                // Highlight if hovered in build mode
+                if (mode === 'BUILD' && hoveredNode === this) {
+                    fill(100, 255, 100, 255);
+                    circle(this.x, this.y, 12);
+                } else if (mode === 'BUILD' && buildPath.includes(this)) {
+                    fill(255, 255, 100, 255);
+                    circle(this.x, this.y, 10);
+                }
+
+                fill(255, 255, 255, 200);
+                noStroke();
+                circle(this.x, this.y, 6);
+
+                // Show connection count in build mode
+                if (mode === 'BUILD') {
+                    textAlign(CENTER, CENTER);
+                    textSize(10);
+                    fill(255);
+                    text(this.connections.size, this.x, this.y - 12);
+                }
+
+                pop();
+            }
+        }
+
+        class WebLine {
+            constructor(node1, node2, isNew = false) {
+                this.node1 = node1;
+                this.node2 = node2;
+                this.active = true;
+                this.opacity = 255;
+                this.isNew = isNew; // Track if this is being spun
+                this.spinProgress = 0; // For animation
+            }
+
+            getMidpoint() {
+                return {
+                    x: (this.node1.x + this.node2.x) / 2,
+                    y: (this.node1.y + this.node2.y) / 2
+                };
+            }
+
+            distanceToPoint(px, py) {
+                // Calculate distance from point to line segment
+                let x1 = this.node1.x;
+                let y1 = this.node1.y;
+                let x2 = this.node2.x;
+                let y2 = this.node2.y;
+
+                let A = px - x1;
+                let B = py - y1;
+                let C = x2 - x1;
+                let D = y2 - y1;
+
+                let dot = A * C + B * D;
+                let lenSq = C * C + D * D;
+                let param = -1;
+
+                if (lenSq != 0) param = dot / lenSq;
+
+                let xx, yy;
+
+                if (param < 0) {
+                    xx = x1;
+                    yy = y1;
+                } else if (param > 1) {
+                    xx = x2;
+                    yy = y2;
+                } else {
+                    xx = x1 + param * C;
+                    yy = y1 + param * D;
+                }
+
+                let dx = px - xx;
+                let dy = py - yy;
+                return sqrt(dx * dx + dy * dy);
+            }
+
+            display() {
+                if (!this.active) return;
+
+                push();
+
+                // Highlight if hovered in build mode
+                if (mode === 'BUILD' && hoveredLine === this) {
+                    stroke(100, 255, 100, 100);
+                    strokeWeight(4);
+                    line(this.node1.x, this.node1.y, this.node2.x, this.node2.y);
+                }
+
+                // Animate new lines being spun
+                if (this.isNew && this.spinProgress < 1) {
+                    stroke(255, 255, 100, 200);
+                    strokeWeight(2);
+                    let x2 = lerp(this.node1.x, this.node2.x, this.spinProgress);
+                    let y2 = lerp(this.node1.y, this.node2.y, this.spinProgress);
+                    line(this.node1.x, this.node1.y, x2, y2);
+
+                    // Draw silk particles
+                    stroke(255, 255, 255, 100);
+                    strokeWeight(1);
+                    for (let i = 0; i < 3; i++) {
+                        let offset = (frameCount * 0.1 + i * 0.3) % 1;
+                        let px = lerp(this.node1.x, x2, offset);
+                        let py = lerp(this.node1.y, y2, offset);
+                        point(px, py);
+                    }
+                } else {
+                    // Convert to white once spinning is complete
+                    if (this.isNew && this.spinProgress >= 1) {
+                        this.isNew = false; // Mark as complete
+                    }
+                    stroke(255, 255, 255, this.opacity);
+                    strokeWeight(1.5);
+                    line(this.node1.x, this.node1.y, this.node2.x, this.node2.y);
+                }
+
+                // Show midpoint in build mode when hovered
+                if (mode === 'BUILD' && hoveredLine === this) {
+                    let mid = this.getMidpoint();
+                    fill(100, 255, 100, 200);
+                    noStroke();
+                    circle(mid.x, mid.y, 8);
+                }
+
+                pop();
+            }
+        }
+
+        class Spider {
+            constructor(node) {
+                this.currentNode = node;
+                this.x = node.x;
+                this.y = node.y;
+                this.targetNode = null;
+                this.moveDistance = 0;
+                this.totalDistance = 0;
+                this.size = 20;
+                this.spinPath = []; // Path to follow while spinning
+            }
+
+            move(direction) {
+                if (this.targetNode || mode !== 'HUNT') return; // Already moving or not in hunt mode
+
+                // Find available connections based on direction
+                let nextNode = null;
+                let bestAngle = Infinity;
+
+                for (let nodeId of this.currentNode.connections) {
+                    let node = webNodes[nodeId];
+                    let angle = atan2(node.y - this.currentNode.y, node.x - this.currentNode.x);
+
+                    // Convert angle to 0-360 degrees
+                    angle = (angle + TWO_PI) % TWO_PI;
+
+                    // Check if this node is in the right direction
+                    let targetAngle = 0;
+                    if (direction === 'RIGHT') targetAngle = 0;
+                    else if (direction === 'DOWN-RIGHT') targetAngle = QUARTER_PI;
+                    else if (direction === 'DOWN') targetAngle = HALF_PI;
+                    else if (direction === 'DOWN-LEFT') targetAngle = HALF_PI + QUARTER_PI;
+                    else if (direction === 'LEFT') targetAngle = PI;
+                    else if (direction === 'UP-LEFT') targetAngle = PI + QUARTER_PI;
+                    else if (direction === 'UP') targetAngle = PI + HALF_PI;
+                    else if (direction === 'UP-RIGHT') targetAngle = TWO_PI - QUARTER_PI;
+
+                    let angleDiff = abs(angle - targetAngle);
+                    if (angleDiff > PI) angleDiff = TWO_PI - angleDiff;
+
+                    if (angleDiff < bestAngle && angleDiff < HALF_PI) {
+                        bestAngle = angleDiff;
+                        nextNode = node;
+                    }
+                }
+
+                if (nextNode) {
+                    this.targetNode = nextNode;
+                    this.moveDistance = 0;
+                    this.totalDistance = dist(this.currentNode.x, this.currentNode.y, nextNode.x, nextNode.y);
+                }
+            }
+
+            startSpinning(path) {
+                this.spinPath = [...path];
+                if (this.spinPath.length > 0) {
+                    mode = 'SPINNING';
+                    this.moveToNextSpinTarget();
+                }
+            }
+
+            moveToNextSpinTarget() {
+                if (this.spinPath.length > 0) {
+                    let nextNode = this.spinPath.shift();
+                    this.targetNode = nextNode;
+                    this.moveDistance = 0;
+                    this.totalDistance = dist(this.currentNode.x, this.currentNode.y, nextNode.x, nextNode.y);
+
+                    // Mark the line as being spun
+                    for (let line of webLines) {
+                        if ((line.node1 === this.currentNode && line.node2 === nextNode) ||
+                            (line.node1 === nextNode && line.node2 === this.currentNode)) {
+                            line.isNew = true;
+                            line.spinProgress = 0;
+                        }
+                    }
+                } else {
+                    // Spinning complete - transition back to HUNT mode
+                    mode = 'HUNT';
+                    document.getElementById('modeIndicator').innerText = 'Mode: HUNT';
+                    document.getElementById('modeIndicator').style.color = '#00ff00';
+                }
+            }
+
+            update() {
+                if (this.targetNode) {
+                    let speed = mode === 'SPINNING' ? SPIDER_SPIN_SPEED : SPIDER_SPEED;
+                    this.moveDistance += speed;
+
+                    if (this.moveDistance >= this.totalDistance) {
+                        // Mark line as fully spun when spider reaches the end
+                        if (mode === 'SPINNING') {
+                            for (let line of webLines) {
+                                if (line.isNew &&
+                                    ((line.node1 === this.currentNode && line.node2 === this.targetNode) ||
+                                     (line.node1 === this.targetNode && line.node2 === this.currentNode))) {
+                                    line.spinProgress = 1;
+                                }
+                            }
+                        }
+
+                        this.currentNode = this.targetNode;
+                        this.x = this.currentNode.x;
+                        this.y = this.currentNode.y;
+                        this.targetNode = null;
+                        this.moveDistance = 0;
+
+                        // If spinning, move to next target
+                        if (mode === 'SPINNING') {
+                            this.moveToNextSpinTarget();
+                        }
+                    } else {
+                        // Interpolate position based on distance traveled
+                        let progress = this.moveDistance / this.totalDistance;
+                        this.x = lerp(this.currentNode.x, this.targetNode.x, progress);
+                        this.y = lerp(this.currentNode.y, this.targetNode.y, progress);
+
+                        // Update spin progress for current line
+                        if (mode === 'SPINNING') {
+                            for (let line of webLines) {
+                                if (line.isNew &&
+                                    ((line.node1 === this.currentNode && line.node2 === this.targetNode) ||
+                                     (line.node1 === this.targetNode && line.node2 === this.currentNode))) {
+                                    line.spinProgress = progress;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Update mode indicator for SPINNING state
+                if (mode === 'SPINNING') {
+                    document.getElementById('modeIndicator').innerText = 'Mode: SPINNING';
+                    document.getElementById('modeIndicator').style.color = '#ff00ff';
+                }
+            }
+
+            stop() {
+                if (this.targetNode && mode === 'HUNT') {
+                    // Snap to nearest node
+                    if (this.moveDistance > this.totalDistance / 2) {
+                        this.currentNode = this.targetNode;
+                        this.x = this.currentNode.x;
+                        this.y = this.currentNode.y;
+                    } else {
+                        this.x = this.currentNode.x;
+                        this.y = this.currentNode.y;
+                    }
+                    this.targetNode = null;
+                    this.moveDistance = 0;
+                }
+            }
+
+            display() {
+                push();
+                translate(this.x, this.y);
+
+                // Spinning animation
+                if (mode === 'SPINNING') {
+                    rotate(frameCount * 0.1);
+                }
+
+                // Body
+                fill(20, 20, 20);
+                stroke(255, 0, 0);
+                strokeWeight(1);
+                ellipse(0, 0, this.size, this.size * 0.8);
+
+                // Legs
+                stroke(20);
+                strokeWeight(2);
+                for (let i = 0; i < 8; i++) {
+                    let angle = (TWO_PI / 8) * i;
+                    let legLength = this.size * 0.7;
+                    line(0, 0, cos(angle) * legLength, sin(angle) * legLength);
+                }
+
+                // Eyes
+                fill(255, 0, 0);
+                noStroke();
+                circle(-5, -3, 3);
+                circle(5, -3, 3);
+
+                pop();
+            }
+        }
+
+        function setup() {
+            let canvas = createCanvas(800, 600);
+            canvas.parent('gameContainer');
+
+            createWeb();
+            spider = new Spider(webNodes[0]); // Start at center
+        }
+
+        function createWeb() {
+            webNodes = [];
+            webLines = [];
+
+            // Create center node
+            let centerNode = new WebNode(width/2, height/2, 0);
+            webNodes.push(centerNode);
+
+            // Create radial and circular nodes
+            for (let ring = 1; ring <= CIRCULAR_RINGS; ring++) {
+                let radius = (WEB_RADIUS / CIRCULAR_RINGS) * ring;
+
+                for (let spoke = 0; spoke < RADIAL_SPOKES; spoke++) {
+                    let angle = (TWO_PI / RADIAL_SPOKES) * spoke;
+                    let x = width/2 + cos(angle) * radius;
+                    let y = height/2 + sin(angle) * radius;
+
+                    let node = new WebNode(x, y, webNodes.length);
+                    webNodes.push(node);
+                }
+            }
+
+            // Create radial connections (spokes)
+            for (let spoke = 0; spoke < RADIAL_SPOKES; spoke++) {
+                // Connect center to first ring
+                let firstRingNode = webNodes[1 + spoke];
+                webLines.push(new WebLine(centerNode, firstRingNode));
+                centerNode.connections.add(firstRingNode.id);
+                firstRingNode.connections.add(centerNode.id);
+
+                // Connect rings along spokes
+                for (let ring = 0; ring < CIRCULAR_RINGS - 1; ring++) {
+                    let nodeIndex1 = 1 + ring * RADIAL_SPOKES + spoke;
+                    let nodeIndex2 = 1 + (ring + 1) * RADIAL_SPOKES + spoke;
+
+                    let node1 = webNodes[nodeIndex1];
+                    let node2 = webNodes[nodeIndex2];
+
+                    webLines.push(new WebLine(node1, node2));
+                    node1.connections.add(node2.id);
+                    node2.connections.add(node1.id);
+                }
+            }
+
+            // Create circular connections
+            for (let ring = 1; ring <= CIRCULAR_RINGS; ring++) {
+                for (let spoke = 0; spoke < RADIAL_SPOKES; spoke++) {
+                    let nodeIndex1 = 1 + (ring - 1) * RADIAL_SPOKES + spoke;
+                    let nodeIndex2 = 1 + (ring - 1) * RADIAL_SPOKES + ((spoke + 1) % RADIAL_SPOKES);
+
+                    let node1 = webNodes[nodeIndex1];
+                    let node2 = webNodes[nodeIndex2];
+
+                    webLines.push(new WebLine(node1, node2));
+                    node1.connections.add(node2.id);
+                    node2.connections.add(node1.id);
+                }
+            }
+        }
+
+        function addWebLine(node1, node2) {
+            // Check if line already exists
+            for (let line of webLines) {
+                if ((line.node1 === node1 && line.node2 === node2) ||
+                    (line.node1 === node2 && line.node2 === node1)) {
+                    return false; // Line already exists
+                }
+            }
+
+            // Add line and update connections
+            webLines.push(new WebLine(node1, node2, true));
+            node1.connections.add(node2.id);
+            node2.connections.add(node1.id);
+            return true;
+        }
+
+        function createNodeOnLine(line, x, y) {
+            // Create new node at the clicked position on the line
+            let newNode = new WebNode(x, y, webNodes.length);
+            webNodes.push(newNode);
+
+            // Store the old line's nodes before removing
+            let node1 = line.node1;
+            let node2 = line.node2;
+
+            // Remove old line
+            let index = webLines.indexOf(line);
+            if (index > -1) {
+                webLines.splice(index, 1);
+                node1.connections.delete(node2.id);
+                node2.connections.delete(node1.id);
+            }
+
+            // Add two new lines (marked as new for animation)
+            webLines.push(new WebLine(node1, newNode, false)); // Not new, these replace the old line
+            webLines.push(new WebLine(newNode, node2, false));
+
+            node1.connections.add(newNode.id);
+            newNode.connections.add(node1.id);
+            newNode.connections.add(node2.id);
+            node2.connections.add(newNode.id);
+
+            return newNode;
+        }
+
+        function findClosestNode(x, y) {
+            let closest = null;
+            let minDist = NODE_SNAP_RADIUS;
+
+            for (let node of webNodes) {
+                let d = dist(x, y, node.x, node.y);
+                if (d < minDist && node.canConnect()) {
+                    minDist = d;
+                    closest = node;
+                }
+            }
+
+            return closest;
+        }
+
+        function findClosestLine(x, y) {
+            let closest = null;
+            let minDist = LINE_SNAP_DISTANCE;
+
+            for (let line of webLines) {
+                let d = line.distanceToPoint(x, y);
+                if (d < minDist) {
+                    minDist = d;
+                    closest = line;
+                }
+            }
+
+            return closest;
+        }
+
+        function draw() {
+            // Gradient background
+            for(let i = 0; i <= height; i++) {
+                let inter = map(i, 0, height, 0, 1);
+                let c = lerpColor(color(25, 0, 50), color(0, 0, 0), inter);
+                stroke(c);
+                line(0, i, width, i);
+            }
+
+            // Update hover states
+            if (mode === 'BUILD') {
+                hoveredNode = findClosestNode(mouseX, mouseY);
+                hoveredLine = hoveredNode ? null : findClosestLine(mouseX, mouseY);
+            } else {
+                hoveredNode = null;
+                hoveredLine = null;
+            }
+
+            // Draw web
+            for (let line of webLines) {
+                line.display();
+            }
+
+            // Draw build path preview
+            if (mode === 'BUILD' && buildPath.length > 0) {
+                push();
+                stroke(255, 255, 100, 150);
+                strokeWeight(2);
+                strokeCap(ROUND);
+                drawingContext.setLineDash([5, 5]);
+
+                // Draw path segments
+                for (let i = 0; i < buildPath.length - 1; i++) {
+                    line(buildPath[i].x, buildPath[i].y, buildPath[i + 1].x, buildPath[i + 1].y);
+                }
+
+                // Draw preview to hovered position
+                let lastNode = buildPath[buildPath.length - 1];
+                if (hoveredNode && hoveredNode !== lastNode) {
+                    line(lastNode.x, lastNode.y, hoveredNode.x, hoveredNode.y);
+                } else if (hoveredLine) {
+                    let mid = hoveredLine.getMidpoint();
+                    line(lastNode.x, lastNode.y, mid.x, mid.y);
+                }
+
+                pop();
+            }
+
+            for (let node of webNodes) {
+                node.display();
+            }
+
+            // Update and draw spider
+            spider.update();
+            spider.display();
+
+            // Handle continuous movement in HUNT mode with 8-directional support
+            if (mode === 'HUNT') {
+                let leftPressed = keyIsDown(LEFT_ARROW);
+                let rightPressed = keyIsDown(RIGHT_ARROW);
+                let upPressed = keyIsDown(UP_ARROW);
+                let downPressed = keyIsDown(DOWN_ARROW);
+
+                // Handle diagonal movement
+                if (upPressed && rightPressed) {
+                    spider.move('UP-RIGHT');
+                } else if (upPressed && leftPressed) {
+                    spider.move('UP-LEFT');
+                } else if (downPressed && rightPressed) {
+                    spider.move('DOWN-RIGHT');
+                } else if (downPressed && leftPressed) {
+                    spider.move('DOWN-LEFT');
+                } else if (leftPressed) {
+                    spider.move('LEFT');
+                } else if (rightPressed) {
+                    spider.move('RIGHT');
+                } else if (upPressed) {
+                    spider.move('UP');
+                } else if (downPressed) {
+                    spider.move('DOWN');
+                }
+            }
+        }
+
+        function mousePressed() {
+            if (mode === 'BUILD') {
+                let lastNode = buildPath[buildPath.length - 1];
+                let targetNode = hoveredNode;
+
+                if (!targetNode && hoveredLine) {
+                    // Create new node on the line
+                    targetNode = createNodeOnLine(hoveredLine, mouseX, mouseY);
+                }
+
+                if (targetNode && targetNode !== lastNode && !buildPath.includes(targetNode)) {
+                    // Add to path and create the line
+                    if (addWebLine(lastNode, targetNode)) {
+                        buildPath.push(targetNode);
+                    }
+                }
+            }
+        }
+
+        function keyPressed() {
+            if (key === ' ') {
+                if (mode === 'HUNT') {
+                    spider.stop();
+                }
+            } else if (keyCode === SHIFT) {
+                // Enter build mode
+                if (mode === 'HUNT' && spider.currentNode.canConnect() && !spider.targetNode) {
+                    shiftPressed = true;
+                    mode = 'BUILD';
+                    buildPath = [spider.currentNode];
+                    document.getElementById('modeIndicator').innerText = 'Mode: BUILD';
+                    document.getElementById('modeIndicator').style.color = '#ffff00';
+                }
+            } else if (key === 'Escape') {
+                // Cancel build mode without executing
+                if (mode === 'BUILD') {
+                    mode = 'HUNT';
+                    buildPath = [];
+                    shiftPressed = false;
+                    document.getElementById('modeIndicator').innerText = 'Mode: HUNT';
+                    document.getElementById('modeIndicator').style.color = '#00ff00';
+                }
+            }
+        }
+
+        function keyReleased() {
+            if (keyCode === SHIFT) {
+                // Exit build mode and execute path
+                if (mode === 'BUILD') {
+                    shiftPressed = false;
+                    // Execute the build path
+                    if (buildPath.length > 1) {
+                        spider.startSpinning(buildPath.slice(1)); // Skip the first node (current position)
+                    } else {
+                        mode = 'HUNT';
+                        document.getElementById('modeIndicator').innerText = 'Mode: HUNT';
+                        document.getElementById('modeIndicator').style.color = '#00ff00';
+                    }
+                    buildPath = [];
+                }
+            }
+        }
+
+        function updateScore(points) {
+            score += points;
+            document.getElementById('score').innerText = `Score: ${score}`;
+        }
+
+        function updateWebHealth(health) {
+            webHealth = health;
+            let healthBar = document.getElementById('webHealthBar');
+            healthBar.style.width = `${health}%`;
+
+            if (health < 50) {
+                healthBar.classList.add('danger');
+            } else {
+                healthBar.classList.remove('danger');
+            }
+        }
+    </script>
+</body>
+</html>
