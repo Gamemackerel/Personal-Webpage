@@ -77,7 +77,7 @@
 <body>
     <div id="gameContainer">
         <div id="ui">
-            <div id="score">Score: 0</div>
+            <div id="score">Score: 0 | Wave: 1</div>
             <div id="modeIndicator">Mode: HUNT</div>
             <div id="buildHint">Hold SHIFT to build web</div>
             <div id="webHealth">
@@ -102,6 +102,15 @@
         let spinningProgress = 0; // For animation
         let currentSpinSegment = 0; // Which segment we're spinning
 
+        // Prey system
+        let preyList = [];
+        let currentWave = 1;
+        let preySpawned = 0;
+        let preyKilled = 0;
+        let waveComplete = false;
+        let webShakeIntensity = 0; // For sparrow shake effect
+        let totalPreyKilled = 0;
+
         // Web configuration
         const RADIAL_SPOKES = 8;
         const CIRCULAR_RINGS = 5;
@@ -109,8 +118,108 @@
         const NODE_SNAP_RADIUS = 15;
         const LINE_SNAP_DISTANCE = 10;
         const MAX_CONNECTIONS = 8;
-        const SPIDER_SPEED = 2; // pixels per frame
-        const SPIDER_SPIN_SPEED = 3; // pixels per frame when spinning web
+        const SPIDER_SPEED = 3; // pixels per frame
+        const SPIDER_SPIN_SPEED = 1; // pixels per frame when spinning web (1/3 of walk speed)
+        const INITIAL_WEB_LINES = 80; // Lock total line count for health calculation
+
+        // Prey configuration
+        const PREY_TYPES = {
+            FLEA: {
+                name: 'Flea',
+                points: 10,
+                escapeTime: 8000, // base escape time
+                bites: 1,
+                minDamage: 0,
+                maxDamage: 1,
+                size: 10,
+                emoji: '🦟'
+            },
+            GNAT: {
+                name: 'Gnat',
+                points: 25,
+                escapeTime: 7000,
+                bites: 2,
+                minDamage: 1,
+                maxDamage: 2,
+                size: 14,
+                emoji: '🪰'
+            },
+            MOSQUITO: {
+                name: 'Mosquito',
+                points: 50,
+                escapeTime: 6000,
+                bites: 3,
+                minDamage: 2,
+                maxDamage: 3,
+                size: 18,
+                emoji: '🦟'
+            },
+            HOUSEFLY: {
+                name: 'Housefly',
+                points: 100,
+                escapeTime: 5000,
+                bites: 4,
+                minDamage: 2,
+                maxDamage: 3,
+                size: 24,
+                emoji: '🪲'
+            },
+            HORSEFLY: {
+                name: 'Horsefly',
+                points: 200,
+                escapeTime: 4000,
+                bites: 5,
+                minDamage: 3,
+                maxDamage: 4,
+                size: 30,
+                emoji: '🐝'
+            },
+            DRAGONFLY: {
+                name: 'Dragonfly',
+                points: 400,
+                escapeTime: 3500,
+                bites: 6,
+                minDamage: 4,
+                maxDamage: 5,
+                size: 38,
+                emoji: '🦋'
+            },
+            SPARROW: {
+                name: 'Sparrow',
+                points: 1000,
+                escapeTime: 10000,
+                bites: 10,
+                minDamage: 5,
+                maxDamage: 6,
+                size: 50,
+                emoji: '🐦',
+                isBoss: true
+            }
+        };
+
+        // Wave configurations
+        const WAVES = [
+            // Wave 1: Tutorial wave
+            [PREY_TYPES.FLEA, PREY_TYPES.FLEA, PREY_TYPES.GNAT],
+            // Wave 2: More fleas and gnats
+            [PREY_TYPES.FLEA, PREY_TYPES.FLEA, PREY_TYPES.GNAT, PREY_TYPES.GNAT],
+            // Wave 3: Introduce mosquito
+            [PREY_TYPES.FLEA, PREY_TYPES.GNAT, PREY_TYPES.GNAT, PREY_TYPES.MOSQUITO],
+            // Wave 4: More mosquitos
+            [PREY_TYPES.GNAT, PREY_TYPES.GNAT, PREY_TYPES.MOSQUITO, PREY_TYPES.MOSQUITO],
+            // Wave 5: Introduce housefly
+            [PREY_TYPES.GNAT, PREY_TYPES.MOSQUITO, PREY_TYPES.MOSQUITO, PREY_TYPES.HOUSEFLY],
+            // Wave 6: Mixed difficulty
+            [PREY_TYPES.MOSQUITO, PREY_TYPES.MOSQUITO, PREY_TYPES.HOUSEFLY, PREY_TYPES.HOUSEFLY],
+            // Wave 7: Introduce horsefly
+            [PREY_TYPES.MOSQUITO, PREY_TYPES.HOUSEFLY, PREY_TYPES.HOUSEFLY, PREY_TYPES.HORSEFLY],
+            // Wave 8: Multiple horseflies
+            [PREY_TYPES.HOUSEFLY, PREY_TYPES.HOUSEFLY, PREY_TYPES.HORSEFLY, PREY_TYPES.HORSEFLY],
+            // Wave 9: Introduce dragonfly
+            [PREY_TYPES.HOUSEFLY, PREY_TYPES.HORSEFLY, PREY_TYPES.HORSEFLY, PREY_TYPES.DRAGONFLY],
+            // Wave 10: BOSS - The Sparrow arrives!
+            [PREY_TYPES.HORSEFLY, PREY_TYPES.DRAGONFLY, PREY_TYPES.SPARROW]
+        ];
 
         class WebNode {
             constructor(x, y, id) {
@@ -160,6 +269,8 @@
                 this.opacity = 255;
                 this.isNew = isNew; // Track if this is being spun
                 this.spinProgress = 0; // For animation
+                this.wobble = 0; // For prey vibration effect
+                this.wobbleSpeed = 0;
             }
 
             getMidpoint() {
@@ -210,11 +321,20 @@
 
                 push();
 
+                // Apply wobble effect from prey
+                let wobbleOffset = 0;
+                if (this.wobble > 0) {
+                    wobbleOffset = sin(frameCount * this.wobbleSpeed) * this.wobble;
+                    this.wobble *= 0.95; // Decay
+                }
+
                 // Highlight if hovered in build mode
                 if (mode === 'BUILD' && hoveredLine === this) {
                     stroke(100, 255, 100, 100);
                     strokeWeight(4);
-                    line(this.node1.x, this.node1.y, this.node2.x, this.node2.y);
+                    let mx = (this.node1.x + this.node2.x) / 2;
+                    let my = (this.node1.y + this.node2.y) / 2;
+                    line(this.node1.x + wobbleOffset, this.node1.y, this.node2.x + wobbleOffset, this.node2.y);
                 }
 
                 // Animate new lines being spun
@@ -223,7 +343,7 @@
                     strokeWeight(2);
                     let x2 = lerp(this.node1.x, this.node2.x, this.spinProgress);
                     let y2 = lerp(this.node1.y, this.node2.y, this.spinProgress);
-                    line(this.node1.x, this.node1.y, x2, y2);
+                    line(this.node1.x + wobbleOffset, this.node1.y, x2 + wobbleOffset, y2);
 
                     // Draw silk particles
                     stroke(255, 255, 255, 100);
@@ -232,7 +352,7 @@
                         let offset = (frameCount * 0.1 + i * 0.3) % 1;
                         let px = lerp(this.node1.x, x2, offset);
                         let py = lerp(this.node1.y, y2, offset);
-                        point(px, py);
+                        point(px + wobbleOffset, py);
                     }
                 } else {
                     // Convert to white once spinning is complete
@@ -241,7 +361,7 @@
                     }
                     stroke(255, 255, 255, this.opacity);
                     strokeWeight(1.5);
-                    line(this.node1.x, this.node1.y, this.node2.x, this.node2.y);
+                    line(this.node1.x + wobbleOffset, this.node1.y, this.node2.x + wobbleOffset, this.node2.y);
                 }
 
                 // Show midpoint in build mode when hovered
@@ -249,7 +369,7 @@
                     let mid = this.getMidpoint();
                     fill(100, 255, 100, 200);
                     noStroke();
-                    circle(mid.x, mid.y, 8);
+                    circle(mid.x + wobbleOffset, mid.y, 8);
                 }
 
                 pop();
@@ -441,6 +561,251 @@
 
                 pop();
             }
+
+            bite() {
+                // Check if spider is on a node with prey
+                for (let i = preyList.length - 1; i >= 0; i--) {
+                    let prey = preyList[i];
+                    if (prey.node === this.currentNode && prey.state === 'CAUGHT') {
+                        prey.takeBite();
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+
+        class Prey {
+            constructor(node, type) {
+                this.node = node;
+                this.type = type;
+                this.x = node.x;
+                this.y = node.y;
+                this.state = 'LANDING'; // LANDING, CAUGHT, ESCAPING, DEAD
+                this.landingProgress = 0;
+                this.landingDuration = 30; // frames
+                this.escapeTimer = type.escapeTime;
+                this.maxEscapeTime = type.escapeTime;
+                this.bitesRemaining = type.bites;
+                this.maxBites = type.bites;
+                this.size = type.size;
+                this.emoji = type.emoji;
+                this.wobblePhase = random(TWO_PI);
+
+                // Landing effect
+                this.impactRings = [];
+            }
+
+            update() {
+                if (this.state === 'LANDING') {
+                    this.landingProgress++;
+                    if (this.landingProgress >= this.landingDuration) {
+                        this.state = 'CAUGHT';
+                        this.onLanded();
+                    }
+                } else if (this.state === 'CAUGHT') {
+                    this.escapeTimer -= deltaTime;
+
+                    // Vibrate nearby web lines
+                    this.vibrateWeb();
+
+                    if (this.escapeTimer <= 0) {
+                        this.escape();
+                    }
+                }
+
+                // Update impact rings
+                for (let i = this.impactRings.length - 1; i >= 0; i--) {
+                    this.impactRings[i].radius += 3;
+                    this.impactRings[i].opacity -= 8;
+                    if (this.impactRings[i].opacity <= 0) {
+                        this.impactRings.splice(i, 1);
+                    }
+                }
+            }
+
+            onLanded() {
+                // Create impact visual
+                for (let i = 0; i < 3; i++) {
+                    this.impactRings.push({
+                        radius: 10 + i * 15,
+                        opacity: 150 - i * 30
+                    });
+                }
+
+                // Break random lines connected to this node
+                let connectedLines = webLines.filter(line =>
+                    (line.node1 === this.node || line.node2 === this.node) && line.active
+                );
+
+                let damageCount = floor(random(this.type.minDamage, this.type.maxDamage + 1));
+                for (let i = 0; i < damageCount && connectedLines.length > 0; i++) {
+                    let randomIndex = floor(random(connectedLines.length));
+                    let lineToBreak = connectedLines[randomIndex];
+                    breakWebLine(lineToBreak);
+                    connectedLines.splice(randomIndex, 1);
+                }
+
+                updateWebHealthDisplay();
+            }
+
+            vibrateWeb() {
+                // Find connected lines and make them wobble
+                for (let line of webLines) {
+                    if ((line.node1 === this.node || line.node2 === this.node) && line.active) {
+                        if (this.type.isBoss) {
+                            // Boss causes intense global shake
+                            webShakeIntensity = 8;
+                            line.wobble = 5;
+                            line.wobbleSpeed = 0.5;
+                        } else {
+                            line.wobble = 2;
+                            line.wobbleSpeed = 0.3;
+                        }
+                    }
+                }
+            }
+
+            escape() {
+                this.state = 'ESCAPING';
+
+                if (this.type.isBoss) {
+                    // Boss destroys ENTIRE web when it escapes
+                    for (let line of webLines) {
+                        if (line.active) {
+                            breakWebLine(line);
+                        }
+                    }
+                    updateWebHealthDisplay();
+
+                    // Remove prey
+                    let index = preyList.indexOf(this);
+                    if (index > -1) {
+                        preyList.splice(index, 1);
+                    }
+
+                    // Immediate game over
+                    setTimeout(() => {
+                        alert(`💀 THE SPARROW ESCAPED! 💀\n\nThe bird tore through your entire web!\n\nFinal Stats:\nScore: ${score}\nWave Reached: ${currentWave}\nTotal Prey Killed: ${totalPreyKilled}`);
+                        noLoop();
+                    }, 100);
+                    return;
+                }
+
+                // Break ALL lines connected to this node
+                let connectedLines = webLines.filter(line =>
+                    (line.node1 === this.node || line.node2 === this.node) && line.active
+                );
+
+                for (let line of connectedLines) {
+                    breakWebLine(line);
+                }
+
+                updateWebHealthDisplay();
+
+                // Remove prey
+                let index = preyList.indexOf(this);
+                if (index > -1) {
+                    preyList.splice(index, 1);
+                }
+
+                checkWaveComplete();
+            }
+
+            takeBite() {
+                this.bitesRemaining--;
+                if (this.bitesRemaining <= 0) {
+                    this.die();
+                }
+            }
+
+            die() {
+                this.state = 'DEAD';
+                updateScore(this.type.points);
+                preyKilled++;
+                totalPreyKilled++;
+
+                // Remove from list
+                let index = preyList.indexOf(this);
+                if (index > -1) {
+                    preyList.splice(index, 1);
+                }
+
+                checkWaveComplete();
+            }
+
+            display() {
+                push();
+
+                // Draw impact rings
+                for (let ring of this.impactRings) {
+                    noFill();
+                    stroke(255, 255, 255, ring.opacity);
+                    strokeWeight(2);
+                    circle(this.x, this.y, ring.radius * 2);
+                }
+
+                if (this.state === 'LANDING') {
+                    // Falling animation with emoji
+                    let progress = this.landingProgress / this.landingDuration;
+                    let y = this.y - (1 - progress) * 100;
+                    let opacity = progress * 255;
+
+                    // Boss has dramatic entrance
+                    if (this.type.isBoss) {
+                        y = this.y - (1 - progress) * 200; // Falls from higher
+                        // Pulsing red glow
+                        fill(255, 0, 0, opacity * 0.3);
+                        noStroke();
+                        circle(this.x, y, this.size * progress * 3);
+                    }
+
+                    textAlign(CENTER, CENTER);
+                    textSize(this.size * progress);
+                    fill(255, 255, 255, opacity);
+                    text(this.emoji, this.x, y);
+                } else if (this.state === 'CAUGHT') {
+                    // Struggling animation with emoji
+                    let wobble = sin(frameCount * 0.2 + this.wobblePhase) * 2;
+
+                    // Boss has angry red aura
+                    if (this.type.isBoss) {
+                        wobble = sin(frameCount * 0.3 + this.wobblePhase) * 5; // More violent
+                        fill(255, 0, 0, 100);
+                        noStroke();
+                        circle(this.x, this.y, this.size * 2.5);
+
+                        // Warning text
+                        textAlign(CENTER, CENTER);
+                        textSize(12);
+                        fill(255, 0, 0);
+                        text('⚠️ BOSS ⚠️', this.x, this.y - this.size * 1.5);
+                    }
+
+                    textAlign(CENTER, CENTER);
+                    textSize(this.size);
+                    fill(255);
+                    text(this.emoji, this.x + wobble, this.y);
+
+                    // Draw escape timer
+                    let timerProgress = this.escapeTimer / this.maxEscapeTime;
+                    noFill();
+                    stroke(this.type.isBoss ? color(255, 0, 0) : color(255, 200, 0));
+                    strokeWeight(this.type.isBoss ? 3 : 2);
+                    arc(this.x, this.y, this.size * 2.5, this.size * 2.5,
+                        -HALF_PI, -HALF_PI + TWO_PI * timerProgress);
+
+                    // Draw health pips (bites remaining)
+                    for (let i = 0; i < this.bitesRemaining; i++) {
+                        fill(255, 0, 0);
+                        noStroke();
+                        let pipX = this.x - (this.maxBites - 1) * 3 + i * 6;
+                        circle(pipX, this.y - this.size * 0.8, this.type.isBoss ? 4 : 3);
+                    }
+                }
+
+                pop();
+            }
         }
 
         function setup() {
@@ -449,6 +814,9 @@
 
             createWeb();
             spider = new Spider(webNodes[0]); // Start at center
+
+            // Start wave 1
+            startWave1();
         }
 
         function createWeb() {
@@ -512,11 +880,12 @@
         }
 
         function addWebLine(node1, node2) {
-            // Check if line already exists
+            // Check if ACTIVE line already exists
             for (let line of webLines) {
-                if ((line.node1 === node1 && line.node2 === node2) ||
-                    (line.node1 === node2 && line.node2 === node1)) {
-                    return false; // Line already exists
+                if (line.active &&
+                    ((line.node1 === node1 && line.node2 === node2) ||
+                    (line.node1 === node2 && line.node2 === node1))) {
+                    return false; // Active line already exists
                 }
             }
 
@@ -562,6 +931,8 @@
 
             for (let node of webNodes) {
                 let d = dist(x, y, node.x, node.y);
+                // Allow targeting any node that can accept more connections
+                // This includes isolated nodes (connections.size == 0) to allow reconnection
                 if (d < minDist && node.canConnect()) {
                     minDist = d;
                     closest = node;
@@ -576,6 +947,9 @@
             let minDist = LINE_SNAP_DISTANCE;
 
             for (let line of webLines) {
+                // Only consider active lines
+                if (!line.active) continue;
+
                 let d = line.distanceToPoint(x, y);
                 if (d < minDist) {
                     minDist = d;
@@ -586,6 +960,99 @@
             return closest;
         }
 
+        function startWave1() {
+            currentWave = 1;
+            preySpawned = 0;
+            preyKilled = 0;
+            waveComplete = false;
+
+            // Spawn prey at intervals
+            spawnNextPrey();
+        }
+
+        function startNextWave() {
+            if (currentWave >= WAVES.length) {
+                // Victory!
+                setTimeout(() => {
+                    alert(`🎉 VICTORY! 🎉\nYou've completed all ${WAVES.length} waves!\n\nFinal Score: ${score}\nWeb Health: ${Math.round(webHealth)}%`);
+                    noLoop();
+                }, 500);
+                return;
+            }
+
+            currentWave++;
+            preySpawned = 0;
+            preyKilled = 0;
+            waveComplete = false;
+
+            spawnNextPrey();
+        }
+
+        function spawnNextPrey() {
+            let currentWavePrey = WAVES[currentWave - 1];
+            if (preySpawned >= currentWavePrey.length) return;
+
+            let preyType = currentWavePrey[preySpawned];
+            let randomNode = webNodes[floor(random(1, webNodes.length))]; // Don't spawn at center
+
+            let prey = new Prey(randomNode, preyType);
+            preyList.push(prey);
+            preySpawned++;
+
+            // Schedule next spawn (2 seconds apart)
+            if (preySpawned < currentWavePrey.length) {
+                setTimeout(spawnNextPrey, 2000);
+            }
+        }
+
+        function breakWebLine(line) {
+            if (!line.active) return;
+
+            line.active = false;
+            line.opacity = 0;
+
+            // Remove connections
+            line.node1.connections.delete(line.node2.id);
+            line.node2.connections.delete(line.node1.id);
+        }
+
+        function updateWebHealthDisplay() {
+            let activeLines = webLines.filter(l => l.active).length;
+            webHealth = (activeLines / INITIAL_WEB_LINES) * 100;
+
+            let healthBar = document.getElementById('webHealthBar');
+            healthBar.style.width = `${Math.min(webHealth, 100)}%`; // Cap display at 100%
+
+            if (webHealth < 50) {
+                healthBar.classList.add('danger');
+            } else {
+                healthBar.classList.remove('danger');
+            }
+
+            // Check game over
+            if (webHealth < 30) {
+                gameOver();
+            }
+        }
+
+        function checkWaveComplete() {
+            let currentWavePrey = WAVES[currentWave - 1];
+            if (preyList.length === 0 && preySpawned >= currentWavePrey.length && !waveComplete) {
+                waveComplete = true;
+                setTimeout(() => {
+                    alert(`Wave ${currentWave} Complete! 🎉\nScore: ${score}\nPrey Killed: ${preyKilled}/${currentWavePrey.length}\nWeb Health: ${Math.round(webHealth)}%`);
+                    startNextWave();
+                }, 500);
+            }
+        }
+
+        function gameOver() {
+            noLoop();
+            setTimeout(() => {
+                alert(`💀 GAME OVER 💀\n\nWeb Integrity Failed!\n\nFinal Stats:\nScore: ${score}\nWave Reached: ${currentWave}\nTotal Prey Killed: ${totalPreyKilled}\nWeb Health: ${Math.round(webHealth)}%`);
+            }, 100);
+        }
+
         function draw() {
             // Gradient background
             for(let i = 0; i <= height; i++) {
@@ -593,6 +1060,13 @@
                 let c = lerpColor(color(25, 0, 50), color(0, 0, 0), inter);
                 stroke(c);
                 line(0, i, width, i);
+            }
+
+            // Apply camera shake for boss
+            push();
+            if (webShakeIntensity > 0) {
+                translate(random(-webShakeIntensity, webShakeIntensity), random(-webShakeIntensity, webShakeIntensity));
+                webShakeIntensity *= 0.92; // Decay shake
             }
 
             // Update hover states
@@ -641,6 +1115,14 @@
             // Update and draw spider
             spider.update();
             spider.display();
+
+            // Update and draw prey
+            for (let prey of preyList) {
+                prey.update();
+                prey.display();
+            }
+
+            pop(); // End camera shake
 
             // Handle continuous movement in HUNT mode with 8-directional support
             if (mode === 'HUNT') {
@@ -692,7 +1174,7 @@
         function keyPressed() {
             if (key === ' ') {
                 if (mode === 'HUNT') {
-                    spider.stop();
+                    spider.bite(); // Try to bite prey (removed stop functionality)
                 }
             } else if (keyCode === SHIFT) {
                 // Enter build mode
@@ -735,7 +1217,7 @@
 
         function updateScore(points) {
             score += points;
-            document.getElementById('score').innerText = `Score: ${score}`;
+            document.getElementById('score').innerText = `Score: ${score} | Wave: ${currentWave}`;
         }
 
         function updateWebHealth(health) {
