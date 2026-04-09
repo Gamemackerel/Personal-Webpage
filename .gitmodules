@@ -5,6 +5,3 @@
 [submodule "mirrormirror"]
 	path = mirrormirror
 	url = git@github.com:Gamemackerel/mirrormirror.git
-[submodule "word-bag-soul-trap"]
-	path = word-bag-soul-trap
-	url = git@github.com:Gamemackerel/word-bag-soul-trap.git
