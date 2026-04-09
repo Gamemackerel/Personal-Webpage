@@ -138,21 +138,21 @@
         </div>
     </div>
     <script>
-        // Game variables
+// Game variables
         let spider;
         let webNodes = [];
         let webLines = [];
         let score = 0;
         let webHealth = 100;
-        let mode = 'HUNT'; // HUNT or BUILD or SPINNING
-        let shiftPressed = false; // Track shift key state
+        let mode = 'HUNT';
+        let shiftPressed = false;
 
         // Build mode variables
-        let buildPath = []; // Array of nodes to visit
+        let buildPath = [];
         let hoveredNode = null;
         let hoveredLine = null;
-        let spinningProgress = 0; // For animation
-        let currentSpinSegment = 0; // Which segment we're spinning
+        let spinningProgress = 0;
+        let currentSpinSegment = 0;
 
         // Prey system
         let preyList = [];
@@ -160,10 +160,10 @@
         let preySpawned = 0;
         let preyKilled = 0;
         let waveComplete = false;
-        let webShakeIntensity = 0; // For sparrow shake effect
+        let webShakeIntensity = 0;
         let totalPreyKilled = 0;
-        let waveBreakActive = false; // Track if we're in the 10s break between waves
-        let messageCounter = 0; // For unique message IDs
+        let waveBreakActive = false;
+        let messageCounter = 0;
 
         // Web configuration
         const RADIAL_SPOKES = 8;
@@ -172,106 +172,31 @@
         const NODE_SNAP_RADIUS = 15;
         const LINE_SNAP_DISTANCE = 10;
         const MAX_CONNECTIONS = 8;
-        const SPIDER_SPEED = 3; // pixels per frame
-        const SPIDER_SPIN_SPEED = 1; // pixels per frame when spinning web (1/3 of walk speed)
-        const INITIAL_WEB_LINES = 80; // Lock total line count for health calculation
+        const SPIDER_SPEED = 3;
+        const SPIDER_SPIN_SPEED = 1;
+        const INITIAL_WEB_LINES = 80;
 
         // Prey configuration
         const PREY_TYPES = {
-            FLEA: {
-                name: 'Flea',
-                points: 10,
-                escapeTime: 8000, // base escape time
-                bites: 1,
-                minDamage: 0,
-                maxDamage: 1,
-                size: 10,
-                emoji: '🦟'
-            },
-            GNAT: {
-                name: 'Gnat',
-                points: 25,
-                escapeTime: 7000,
-                bites: 2,
-                minDamage: 1,
-                maxDamage: 2,
-                size: 14,
-                emoji: '🪰'
-            },
-            MOSQUITO: {
-                name: 'Mosquito',
-                points: 50,
-                escapeTime: 6000,
-                bites: 3,
-                minDamage: 2,
-                maxDamage: 3,
-                size: 18,
-                emoji: '🦟'
-            },
-            HOUSEFLY: {
-                name: 'Housefly',
-                points: 100,
-                escapeTime: 5000,
-                bites: 4,
-                minDamage: 2,
-                maxDamage: 3,
-                size: 24,
-                emoji: '🪲'
-            },
-            HORSEFLY: {
-                name: 'Horsefly',
-                points: 200,
-                escapeTime: 4000,
-                bites: 5,
-                minDamage: 3,
-                maxDamage: 4,
-                size: 30,
-                emoji: '🐝'
-            },
-            DRAGONFLY: {
-                name: 'Dragonfly',
-                points: 400,
-                escapeTime: 3500,
-                bites: 6,
-                minDamage: 4,
-                maxDamage: 5,
-                size: 38,
-                emoji: '🦋'
-            },
-            SPARROW: {
-                name: 'Sparrow',
-                points: 1000,
-                escapeTime: 10000,
-                bites: 10,
-                minDamage: 5,
-                maxDamage: 6,
-                size: 50,
-                emoji: '🐦',
-                isBoss: true
-            }
+            FLEA: { name: 'Flea', points: 10, escapeTime: 8000, bites: 1, minDamage: 0, maxDamage: 1, size: 10, emoji: '🦟' },
+            GNAT: { name: 'Gnat', points: 25, escapeTime: 7000, bites: 2, minDamage: 1, maxDamage: 2, size: 14, emoji: '🪰' },
+            MOSQUITO: { name: 'Mosquito', points: 50, escapeTime: 6000, bites: 3, minDamage: 2, maxDamage: 3, size: 18, emoji: '🦟' },
+            HOUSEFLY: { name: 'Housefly', points: 100, escapeTime: 5000, bites: 4, minDamage: 2, maxDamage: 3, size: 24, emoji: '🪲' },
+            HORSEFLY: { name: 'Horsefly', points: 200, escapeTime: 4000, bites: 5, minDamage: 3, maxDamage: 4, size: 30, emoji: '🐝' },
+            DRAGONFLY: { name: 'Dragonfly', points: 400, escapeTime: 3500, bites: 6, minDamage: 4, maxDamage: 5, size: 38, emoji: '🦋' },
+            SPARROW: { name: 'Sparrow', points: 1000, escapeTime: 10000, bites: 10, minDamage: 5, maxDamage: 6, size: 50, emoji: '🐦', isBoss: true }
         };
 
-        // Wave configurations
         const WAVES = [
-            // Wave 1: Tutorial wave
             [PREY_TYPES.FLEA, PREY_TYPES.FLEA, PREY_TYPES.GNAT],
-            // Wave 2: More fleas and gnats
             [PREY_TYPES.FLEA, PREY_TYPES.FLEA, PREY_TYPES.GNAT, PREY_TYPES.GNAT],
-            // Wave 3: Introduce mosquito
             [PREY_TYPES.FLEA, PREY_TYPES.GNAT, PREY_TYPES.GNAT, PREY_TYPES.MOSQUITO],
-            // Wave 4: More mosquitos
             [PREY_TYPES.GNAT, PREY_TYPES.GNAT, PREY_TYPES.MOSQUITO, PREY_TYPES.MOSQUITO],
-            // Wave 5: Introduce housefly
             [PREY_TYPES.GNAT, PREY_TYPES.MOSQUITO, PREY_TYPES.MOSQUITO, PREY_TYPES.HOUSEFLY],
-            // Wave 6: Mixed difficulty
             [PREY_TYPES.MOSQUITO, PREY_TYPES.MOSQUITO, PREY_TYPES.HOUSEFLY, PREY_TYPES.HOUSEFLY],
-            // Wave 7: Introduce horsefly
             [PREY_TYPES.MOSQUITO, PREY_TYPES.HOUSEFLY, PREY_TYPES.HOUSEFLY, PREY_TYPES.HORSEFLY],
-            // Wave 8: Multiple horseflies
             [PREY_TYPES.HOUSEFLY, PREY_TYPES.HOUSEFLY, PREY_TYPES.HORSEFLY, PREY_TYPES.HORSEFLY],
-            // Wave 9: Introduce dragonfly
             [PREY_TYPES.HOUSEFLY, PREY_TYPES.HORSEFLY, PREY_TYPES.HORSEFLY, PREY_TYPES.DRAGONFLY],
-            // Wave 10: BOSS - The Sparrow arrives!
             [PREY_TYPES.HORSEFLY, PREY_TYPES.DRAGONFLY, PREY_TYPES.SPARROW]
         ];
 
@@ -289,8 +214,6 @@
 
             display() {
                 push();
-
-                // Highlight if hovered in build mode
                 if (mode === 'BUILD' && hoveredNode === this) {
                     fill(100, 255, 100, 255);
                     circle(this.x, this.y, 12);
@@ -298,1083 +221,121 @@
                     fill(255, 255, 100, 255);
                     circle(this.x, this.y, 10);
                 }
-
                 fill(255, 255, 255, 200);
                 noStroke();
                 circle(this.x, this.y, 6);
-
-                // Show connection count in build mode
                 if (mode === 'BUILD') {
                     textAlign(CENTER, CENTER);
                     textSize(10);
                     fill(255);
                     text(this.connections.size, this.x, this.y - 12);
                 }
-
                 pop();
             }
         }
-
-        class WebLine {
+class WebLine {
             constructor(node1, node2, isNew = false) {
                 this.node1 = node1;
                 this.node2 = node2;
                 this.active = true;
                 this.opacity = 255;
-                this.isNew = isNew; // Track if this is being spun
-                this.spinProgress = 0; // For animation
-                this.wobble = 0; // For prey vibration effect
+                this.isNew = isNew;
+                this.spinProgress = 0;
+                this.wobble = 0;
                 this.wobbleSpeed = 0;
-                this.isBeingSpun = false; // Track if spider is currently spinning this line
+                this.isBeingSpun = false;
+                this.sag = random(0.05, 0.15);
+                this.wavePhase = random(TWO_PI);
+                this.tension = 1;
             }
 
             getMidpoint() {
-                return {
-                    x: (this.node1.x + this.node2.x) / 2,
-                    y: (this.node1.y + this.node2.y) / 2
-                };
+                return { x: (this.node1.x + this.node2.x) / 2, y: (this.node1.y + this.node2.y) / 2 };
             }
 
             distanceToPoint(px, py) {
-                // Calculate distance from point to line segment
-                let x1 = this.node1.x;
-                let y1 = this.node1.y;
-                let x2 = this.node2.x;
-                let y2 = this.node2.y;
-
-                let A = px - x1;
-                let B = py - y1;
-                let C = x2 - x1;
-                let D = y2 - y1;
-
-                let dot = A * C + B * D;
-                let lenSq = C * C + D * D;
-                let param = -1;
-
-                if (lenSq != 0) param = dot / lenSq;
-
+                let x1 = this.node1.x, y1 = this.node1.y, x2 = this.node2.x, y2 = this.node2.y;
+                let A = px - x1, B = py - y1, C = x2 - x1, D = y2 - y1;
+                let dot = A * C + B * D, lenSq = C * C + D * D, param = lenSq != 0 ? dot / lenSq : -1;
                 let xx, yy;
-
-                if (param < 0) {
-                    xx = x1;
-                    yy = y1;
-                } else if (param > 1) {
-                    xx = x2;
-                    yy = y2;
-                } else {
-                    xx = x1 + param * C;
-                    yy = y1 + param * D;
-                }
-
-                let dx = px - xx;
-                let dy = py - yy;
+                if (param < 0) { xx = x1; yy = y1; }
+                else if (param > 1) { xx = x2; yy = y2; }
+                else { xx = x1 + param * C; yy = y1 + param * D; }
+                let dx = px - xx, dy = py - yy;
                 return sqrt(dx * dx + dy * dy);
             }
 
             display() {
                 if (!this.active) return;
-
                 push();
-
-                // Apply wobble effect from prey
                 let wobbleOffset = 0;
                 if (this.wobble > 0) {
                     wobbleOffset = sin(frameCount * this.wobbleSpeed) * this.wobble;
-                    this.wobble *= 0.95; // Decay
+                    this.wobble *= 0.95;
                 }
+                let sway = sin(frameCount * 0.02 + this.wavePhase) * 0.5;
+                this.tension = lerp(this.tension, 1, 0.05);
 
-                // Highlight if hovered in build mode
                 if (mode === 'BUILD' && hoveredLine === this) {
                     stroke(100, 255, 100, 100);
                     strokeWeight(4);
-                    let mx = (this.node1.x + this.node2.x) / 2;
-                    let my = (this.node1.y + this.node2.y) / 2;
-                    line(this.node1.x + wobbleOffset, this.node1.y, this.node2.x + wobbleOffset, this.node2.y);
+                    this.drawCurvedLine(wobbleOffset, sway);
                 }
 
-                // Animate new lines being spun
                 if (this.isNew && this.spinProgress < 1) {
                     stroke(255, 255, 100, 200);
                     strokeWeight(2);
                     let x2 = lerp(this.node1.x, this.node2.x, this.spinProgress);
                     let y2 = lerp(this.node1.y, this.node2.y, this.spinProgress);
-                    line(this.node1.x + wobbleOffset, this.node1.y, x2 + wobbleOffset, y2);
-
-                    // Draw silk particles
+                    noFill();
+                    beginShape();
+                    for (let t = 0; t <= this.spinProgress; t += 0.05) {
+                        let x = lerp(this.node1.x, x2, t);
+                        let y = lerp(this.node1.y, y2, t);
+                        let curve = sin(t * PI) * this.sag * 20 * this.tension;
+                        vertex(x + wobbleOffset + sway, y + curve);
+                    }
+                    endShape();
                     stroke(255, 255, 255, 100);
                     strokeWeight(1);
                     for (let i = 0; i < 3; i++) {
                         let offset = (frameCount * 0.1 + i * 0.3) % 1;
-                        let px = lerp(this.node1.x, x2, offset);
-                        let py = lerp(this.node1.y, y2, offset);
-                        point(px + wobbleOffset, py);
+                        if (offset <= this.spinProgress) {
+                            let px = lerp(this.node1.x, x2, offset);
+                            let py = lerp(this.node1.y, y2, offset);
+                            let curve = sin(offset * PI) * this.sag * 20 * this.tension;
+                            point(px + wobbleOffset + sway, py + curve);
+                        }
                     }
                 } else {
-                    // Convert to white once spinning is complete
-                    if (this.isNew && this.spinProgress >= 1) {
-                        this.isNew = false; // Mark as complete
-                    }
+                    if (this.isNew && this.spinProgress >= 1) this.isNew = false;
                     stroke(255, 255, 255, this.opacity);
                     strokeWeight(1.5);
-                    line(this.node1.x + wobbleOffset, this.node1.y, this.node2.x + wobbleOffset, this.node2.y);
+                    this.drawCurvedLine(wobbleOffset, sway);
                 }
 
-                // Show midpoint in build mode when hovered
                 if (mode === 'BUILD' && hoveredLine === this) {
                     let mid = this.getMidpoint();
                     fill(100, 255, 100, 200);
                     noStroke();
-                    circle(mid.x + wobbleOffset, mid.y, 8);
+                    circle(mid.x + wobbleOffset + sway, mid.y, 8);
                 }
-
-                pop();
-            }
-        }
-
-        class Spider {
-            constructor(node) {
-                this.currentNode = node;
-                this.x = node.x;
-                this.y = node.y;
-                this.targetNode = null;
-                this.moveDistance = 0;
-                this.totalDistance = 0;
-                this.size = 20;
-                this.spinPath = []; // Path to follow while spinning
-                this.spinSegmentIndex = 0; // Track which segment we're on for speed boost
-            }
-
-            move(direction) {
-                if (this.targetNode || mode !== 'HUNT') return; // Already moving or not in hunt mode
-
-                // Find available connections based on direction
-                let nextNode = null;
-                let bestAngle = Infinity;
-
-                for (let nodeId of this.currentNode.connections) {
-                    let node = webNodes[nodeId];
-                    let angle = atan2(node.y - this.currentNode.y, node.x - this.currentNode.x);
-
-                    // Convert angle to 0-360 degrees
-                    angle = (angle + TWO_PI) % TWO_PI;
-
-                    // Check if this node is in the right direction
-                    let targetAngle = 0;
-                    if (direction === 'RIGHT') targetAngle = 0;
-                    else if (direction === 'DOWN-RIGHT') targetAngle = QUARTER_PI;
-                    else if (direction === 'DOWN') targetAngle = HALF_PI;
-                    else if (direction === 'DOWN-LEFT') targetAngle = HALF_PI + QUARTER_PI;
-                    else if (direction === 'LEFT') targetAngle = PI;
-                    else if (direction === 'UP-LEFT') targetAngle = PI + QUARTER_PI;
-                    else if (direction === 'UP') targetAngle = PI + HALF_PI;
-                    else if (direction === 'UP-RIGHT') targetAngle = TWO_PI - QUARTER_PI;
-
-                    let angleDiff = abs(angle - targetAngle);
-                    if (angleDiff > PI) angleDiff = TWO_PI - angleDiff;
-
-                    if (angleDiff < bestAngle && angleDiff < HALF_PI) {
-                        bestAngle = angleDiff;
-                        nextNode = node;
-                    }
-                }
-
-                if (nextNode) {
-                    this.targetNode = nextNode;
-                    this.moveDistance = 0;
-                    this.totalDistance = dist(this.currentNode.x, this.currentNode.y, nextNode.x, nextNode.y);
-                }
-            }
-
-            startSpinning(path) {
-                this.spinPath = [...path];
-                this.spinSegmentIndex = 0; // Reset segment counter
-                if (this.spinPath.length > 0) {
-                    mode = 'SPINNING';
-                    this.moveToNextSpinTarget();
-                }
-            }
-
-            moveToNextSpinTarget() {
-                if (this.spinPath.length > 0) {
-                    let nextNode = this.spinPath.shift();
-                    this.targetNode = nextNode;
-                    this.moveDistance = 0;
-                    this.totalDistance = dist(this.currentNode.x, this.currentNode.y, nextNode.x, nextNode.y);
-
-                    // Mark the line as being spun and protected
-                    for (let line of webLines) {
-                        if ((line.node1 === this.currentNode && line.node2 === nextNode) ||
-                            (line.node1 === nextNode && line.node2 === this.currentNode)) {
-                            line.isNew = true;
-                            line.spinProgress = 0;
-                            line.isBeingSpun = true; // Protect from destruction
-                        }
-                    }
-                } else {
-                    // Spinning complete - transition back to HUNT mode
-                    mode = 'HUNT';
-                    this.spinSegmentIndex = 0; // Reset counter
-                    document.getElementById('modeIndicator').innerText = 'Mode: HUNT';
-                    document.getElementById('modeIndicator').style.color = '#00ff00';
-                }
-            }
-
-            update() {
-                if (this.targetNode) {
-                    // Calculate speed with boost for successive segments
-                    let baseSpeed = mode === 'SPINNING' ? SPIDER_SPIN_SPEED : SPIDER_SPEED;
-                    let speed = baseSpeed;
-
-                    if (mode === 'SPINNING') {
-                        // Double speed for each successive segment (2x, 4x, 8x, etc.)
-                        // Cap at 12x speed
-                        speed = Math.min(baseSpeed * Math.pow(2, this.spinSegmentIndex), 12);
-                    }
-
-                    this.moveDistance += speed;
-
-                    if (this.moveDistance >= this.totalDistance) {
-                        // Mark line as fully spun when spider reaches the end
-                        if (mode === 'SPINNING') {
-                            for (let line of webLines) {
-                                if (line.isNew &&
-                                    ((line.node1 === this.currentNode && line.node2 === this.targetNode) ||
-                                     (line.node1 === this.targetNode && line.node2 === this.currentNode))) {
-                                    line.spinProgress = 1;
-                                    line.isBeingSpun = false; // No longer protected
-                                }
-                            }
-                        }
-
-                        this.currentNode = this.targetNode;
-                        this.x = this.currentNode.x;
-                        this.y = this.currentNode.y;
-                        this.targetNode = null;
-                        this.moveDistance = 0;
-
-                        // If spinning, move to next target
-                        if (mode === 'SPINNING') {
-                            this.spinSegmentIndex++; // Increment for speed boost
-                            this.moveToNextSpinTarget();
-                        }
-                    } else {
-                        // Interpolate position based on distance traveled
-                        let progress = this.moveDistance / this.totalDistance;
-                        this.x = lerp(this.currentNode.x, this.targetNode.x, progress);
-                        this.y = lerp(this.currentNode.y, this.targetNode.y, progress);
-
-                        // Update spin progress for current line
-                        if (mode === 'SPINNING') {
-                            for (let line of webLines) {
-                                if (line.isNew &&
-                                    ((line.node1 === this.currentNode && line.node2 === this.targetNode) ||
-                                     (line.node1 === this.targetNode && line.node2 === this.currentNode))) {
-                                    line.spinProgress = progress;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Update mode indicator for SPINNING state
-                if (mode === 'SPINNING') {
-                    document.getElementById('modeIndicator').innerText = 'Mode: SPINNING';
-                    document.getElementById('modeIndicator').style.color = '#ff00ff';
-                }
-            }
-
-            stop() {
-                if (this.targetNode && mode === 'HUNT') {
-                    // Snap to nearest node
-                    if (this.moveDistance > this.totalDistance / 2) {
-                        this.currentNode = this.targetNode;
-                        this.x = this.currentNode.x;
-                        this.y = this.currentNode.y;
-                    } else {
-                        this.x = this.currentNode.x;
-                        this.y = this.currentNode.y;
-                    }
-                    this.targetNode = null;
-                    this.moveDistance = 0;
-                }
-            }
-
-            display() {
-                push();
-                translate(this.x, this.y);
-
-                // Spinning animation
-                if (mode === 'SPINNING') {
-                    rotate(frameCount * 0.1);
-                }
-
-                // Radial gradient glow background for visibility
-                let gradient = drawingContext.createRadialGradient(0, 0, 0, 0, 0, this.size * 0.8);
-                gradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
-                gradient.addColorStop(0.7, 'rgba(255, 255, 255, 0.4)');
-                gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-
-                drawingContext.fillStyle = gradient;
-                noStroke();
-                circle(0, 0, this.size * 1.6);
-
-                // Draw spider emoji
-                textAlign(CENTER, CENTER);
-                textSize(this.size * 1.5);
-                text('🕷️', 0, 0);
-
                 pop();
             }
 
-            bite() {
-                // Check if spider is on a node with prey
-                for (let i = preyList.length - 1; i >= 0; i--) {
-                    let prey = preyList[i];
-                    if (prey.node === this.currentNode && prey.state === 'CAUGHT') {
-                        prey.takeBite();
-                        return true;
-                    }
+            drawCurvedLine(wobbleOffset, sway) {
+                noFill();
+                beginShape();
+                for (let t = 0; t <= 1; t += 0.05) {
+                    let x = lerp(this.node1.x, this.node2.x, t);
+                    let y = lerp(this.node1.y, this.node2.y, t);
+                    let curve = sin(t * PI) * this.sag * 20 * this.tension;
+                    vertex(x + wobbleOffset + sway, y + curve);
                 }
-                return false;
+                endShape();
+            }
+
+            applyForce(force) {
+                this.tension = max(0.5, this.tension - force);
             }
         }
-
-        class Prey {
-            constructor(node, type) {
-                this.node = node;
-                this.type = type;
-                this.x = node.x;
-                this.y = node.y;
-                this.state = 'LANDING'; // LANDING, CAUGHT, ESCAPING, DEAD
-                this.landingProgress = 0;
-                this.landingDuration = 30; // frames
-                this.escapeTimer = type.escapeTime;
-                this.maxEscapeTime = type.escapeTime;
-                this.bitesRemaining = type.bites;
-                this.maxBites = type.bites;
-                this.size = type.size;
-                this.emoji = type.emoji;
-                this.wobblePhase = random(TWO_PI);
-
-                // Landing effect
-                this.impactRings = [];
-            }
-
-            update() {
-                if (this.state === 'LANDING') {
-                    this.landingProgress++;
-                    if (this.landingProgress >= this.landingDuration) {
-                        this.state = 'CAUGHT';
-                        this.onLanded();
-                    }
-                } else if (this.state === 'CAUGHT') {
-                    this.escapeTimer -= deltaTime;
-
-                    // Vibrate nearby web lines
-                    this.vibrateWeb();
-
-                    if (this.escapeTimer <= 0) {
-                        this.escape();
-                    }
-                }
-
-                // Update impact rings
-                for (let i = this.impactRings.length - 1; i >= 0; i--) {
-                    this.impactRings[i].radius += 3;
-                    this.impactRings[i].opacity -= 8;
-                    if (this.impactRings[i].opacity <= 0) {
-                        this.impactRings.splice(i, 1);
-                    }
-                }
-            }
-
-            onLanded() {
-                // Create impact visual
-                for (let i = 0; i < 3; i++) {
-                    this.impactRings.push({
-                        radius: 10 + i * 15,
-                        opacity: 150 - i * 30
-                    });
-                }
-
-                // Get nodes in current build path (if any) to protect them
-                let protectedNodes = new Set();
-                if (mode === 'BUILD' && buildPath.length > 0) {
-                    buildPath.forEach(node => protectedNodes.add(node));
-                }
-
-                // Also protect nodes in spider's spin path (if spinning)
-                if (mode === 'SPINNING' && spider.spinPath.length > 0) {
-                    spider.spinPath.forEach(node => protectedNodes.add(node));
-                    // Also add the current target node
-                    if (spider.targetNode) protectedNodes.add(spider.targetNode);
-                    if (spider.currentNode) protectedNodes.add(spider.currentNode);
-                }
-
-                // Break random lines connected to this node (except those being spun or in protected paths)
-                let connectedLines = webLines.filter(line => {
-                    if (!line.active || line.isBeingSpun) return false;
-
-                    // Don't break if line connects two nodes in the protected paths
-                    if (protectedNodes.has(line.node1) && protectedNodes.has(line.node2)) {
-                        return false;
-                    }
-
-                    return (line.node1 === this.node || line.node2 === this.node);
-                });
-
-                let damageCount = floor(random(this.type.minDamage, this.type.maxDamage + 1));
-                for (let i = 0; i < damageCount && connectedLines.length > 0; i++) {
-                    let randomIndex = floor(random(connectedLines.length));
-                    let lineToBreak = connectedLines[randomIndex];
-                    breakWebLine(lineToBreak);
-                    connectedLines.splice(randomIndex, 1);
-                }
-
-                updateWebHealthDisplay();
-            }
-
-            vibrateWeb() {
-                // Find connected lines and make them wobble
-                for (let line of webLines) {
-                    if ((line.node1 === this.node || line.node2 === this.node) && line.active) {
-                        if (this.type.isBoss) {
-                            // Boss causes intense global shake
-                            webShakeIntensity = 8;
-                            line.wobble = 5;
-                            line.wobbleSpeed = 0.5;
-                        } else {
-                            line.wobble = 2;
-                            line.wobbleSpeed = 0.3;
-                        }
-                    }
-                }
-            }
-
-            escape() {
-                this.state = 'ESCAPING';
-
-                if (this.type.isBoss) {
-                    // Boss destroys ENTIRE web when it escapes
-                    for (let line of webLines) {
-                        if (line.active && !line.isBeingSpun) {
-                            breakWebLine(line);
-                        }
-                    }
-                    updateWebHealthDisplay();
-
-                    // Remove prey
-                    let index = preyList.indexOf(this);
-                    if (index > -1) {
-                        preyList.splice(index, 1);
-                    }
-
-                    // Immediate game over
-                    showMessage('💀 THE SPARROW ESCAPED! 💀', `The bird tore through your entire web!<br>Score: ${score} | Wave: ${currentWave} | Prey Killed: ${totalPreyKilled}`, 'center');
-                    setTimeout(() => {
-                        noLoop();
-                    }, 3000);
-                    return;
-                }
-
-                // Get nodes in current build path (if any) to protect them
-                let protectedNodes = new Set();
-                if (mode === 'BUILD' && buildPath.length > 0) {
-                    buildPath.forEach(node => protectedNodes.add(node));
-                }
-
-                // Also protect nodes in spider's spin path (if spinning)
-                if (mode === 'SPINNING' && spider.spinPath.length > 0) {
-                    spider.spinPath.forEach(node => protectedNodes.add(node));
-                    // Also add the current target node
-                    if (spider.targetNode) protectedNodes.add(spider.targetNode);
-                    if (spider.currentNode) protectedNodes.add(spider.currentNode);
-                }
-
-                // Break ALL lines connected to this node (except those being spun or in protected paths)
-                let connectedLines = webLines.filter(line => {
-                    if (!line.active || line.isBeingSpun) return false;
-
-                    // Don't break if line connects two nodes in the protected paths
-                    if (protectedNodes.has(line.node1) && protectedNodes.has(line.node2)) {
-                        return false;
-                    }
-
-                    return (line.node1 === this.node || line.node2 === this.node);
-                });
-
-                for (let line of connectedLines) {
-                    breakWebLine(line);
-                }
-
-                updateWebHealthDisplay();
-
-                // Remove prey
-                let index = preyList.indexOf(this);
-                if (index > -1) {
-                    preyList.splice(index, 1);
-                }
-
-                checkWaveComplete();
-            }
-
-            takeBite() {
-                this.bitesRemaining--;
-                if (this.bitesRemaining <= 0) {
-                    this.die();
-                }
-            }
-
-            die() {
-                this.state = 'DEAD';
-                updateScore(this.type.points);
-                preyKilled++;
-                totalPreyKilled++;
-
-                // Remove from list
-                let index = preyList.indexOf(this);
-                if (index > -1) {
-                    preyList.splice(index, 1);
-                }
-
-                checkWaveComplete();
-            }
-
-            display() {
-                push();
-
-                // Draw impact rings
-                for (let ring of this.impactRings) {
-                    noFill();
-                    stroke(255, 255, 255, ring.opacity);
-                    strokeWeight(2);
-                    circle(this.x, this.y, ring.radius * 2);
-                }
-
-                if (this.state === 'LANDING') {
-                    // Falling animation with emoji
-                    let progress = this.landingProgress / this.landingDuration;
-                    let y = this.y - (1 - progress) * 100;
-                    let opacity = progress * 255;
-
-                    // Boss has dramatic entrance
-                    if (this.type.isBoss) {
-                        y = this.y - (1 - progress) * 200; // Falls from higher
-                        // Pulsing red glow
-                        fill(255, 0, 0, opacity * 0.3);
-                        noStroke();
-                        circle(this.x, y, this.size * progress * 3);
-                    }
-
-                    textAlign(CENTER, CENTER);
-                    textSize(this.size * progress);
-                    fill(255, 255, 255, opacity);
-                    text(this.emoji, this.x, y);
-                } else if (this.state === 'CAUGHT') {
-                    // Struggling animation with emoji
-                    let wobble = sin(frameCount * 0.2 + this.wobblePhase) * 2;
-
-                    // Boss has angry red aura
-                    if (this.type.isBoss) {
-                        wobble = sin(frameCount * 0.3 + this.wobblePhase) * 5; // More violent
-                        fill(255, 0, 0, 100);
-                        noStroke();
-                        circle(this.x, this.y, this.size * 2.5);
-
-                        // Warning text
-                        textAlign(CENTER, CENTER);
-                        textSize(12);
-                        fill(255, 0, 0);
-                        text('⚠️ BOSS ⚠️', this.x, this.y - this.size * 1.5);
-                    }
-
-                    textAlign(CENTER, CENTER);
-                    textSize(this.size);
-                    fill(255);
-                    text(this.emoji, this.x + wobble, this.y);
-
-                    // Draw escape timer
-                    let timerProgress = this.escapeTimer / this.maxEscapeTime;
-                    noFill();
-                    stroke(this.type.isBoss ? color(255, 0, 0) : color(255, 200, 0));
-                    strokeWeight(this.type.isBoss ? 3 : 2);
-                    arc(this.x, this.y, this.size * 2.5, this.size * 2.5,
-                        -HALF_PI, -HALF_PI + TWO_PI * timerProgress);
-
-                    // Draw health pips (bites remaining)
-                    for (let i = 0; i < this.bitesRemaining; i++) {
-                        fill(255, 0, 0);
-                        noStroke();
-                        let pipX = this.x - (this.maxBites - 1) * 3 + i * 6;
-                        circle(pipX, this.y - this.size * 0.8, this.type.isBoss ? 4 : 3);
-                    }
-                }
-
-                pop();
-            }
-        }
-
-        function setup() {
-            let canvas = createCanvas(800, 600);
-            canvas.parent('gameContainer');
-
-            // Make canvas background transparent to show forest through
-            clear();
-
-            createWeb();
-            spider = new Spider(webNodes[0]); // Start at center
-
-            // Start wave 1
-            startWave1();
-        }
-
-        function createWeb() {
-            webNodes = [];
-            webLines = [];
-
-            // Create center node
-            let centerNode = new WebNode(width/2, height/2, 0);
-            webNodes.push(centerNode);
-
-            // Create radial and circular nodes
-            for (let ring = 1; ring <= CIRCULAR_RINGS; ring++) {
-                let radius = (WEB_RADIUS / CIRCULAR_RINGS) * ring;
-
-                for (let spoke = 0; spoke < RADIAL_SPOKES; spoke++) {
-                    let angle = (TWO_PI / RADIAL_SPOKES) * spoke;
-                    let x = width/2 + cos(angle) * radius;
-                    let y = height/2 + sin(angle) * radius;
-
-                    let node = new WebNode(x, y, webNodes.length);
-                    webNodes.push(node);
-                }
-            }
-
-            // Create radial connections (spokes)
-            for (let spoke = 0; spoke < RADIAL_SPOKES; spoke++) {
-                // Connect center to first ring
-                let firstRingNode = webNodes[1 + spoke];
-                webLines.push(new WebLine(centerNode, firstRingNode));
-                centerNode.connections.add(firstRingNode.id);
-                firstRingNode.connections.add(centerNode.id);
-
-                // Connect rings along spokes
-                for (let ring = 0; ring < CIRCULAR_RINGS - 1; ring++) {
-                    let nodeIndex1 = 1 + ring * RADIAL_SPOKES + spoke;
-                    let nodeIndex2 = 1 + (ring + 1) * RADIAL_SPOKES + spoke;
-
-                    let node1 = webNodes[nodeIndex1];
-                    let node2 = webNodes[nodeIndex2];
-
-                    webLines.push(new WebLine(node1, node2));
-                    node1.connections.add(node2.id);
-                    node2.connections.add(node1.id);
-                }
-            }
-
-            // Create circular connections
-            for (let ring = 1; ring <= CIRCULAR_RINGS; ring++) {
-                for (let spoke = 0; spoke < RADIAL_SPOKES; spoke++) {
-                    let nodeIndex1 = 1 + (ring - 1) * RADIAL_SPOKES + spoke;
-                    let nodeIndex2 = 1 + (ring - 1) * RADIAL_SPOKES + ((spoke + 1) % RADIAL_SPOKES);
-
-                    let node1 = webNodes[nodeIndex1];
-                    let node2 = webNodes[nodeIndex2];
-
-                    webLines.push(new WebLine(node1, node2));
-                    node1.connections.add(node2.id);
-                    node2.connections.add(node1.id);
-                }
-            }
-        }
-
-        function addWebLine(node1, node2) {
-            // Check if ACTIVE line already exists
-            for (let line of webLines) {
-                if (line.active &&
-                    ((line.node1 === node1 && line.node2 === node2) ||
-                    (line.node1 === node2 && line.node2 === node1))) {
-                    return false; // Active line already exists
-                }
-            }
-
-            // Add line and update connections
-            webLines.push(new WebLine(node1, node2, true));
-            node1.connections.add(node2.id);
-            node2.connections.add(node1.id);
-            return true;
-        }
-
-        function createNodeOnLine(line, x, y) {
-            // Create new node at the clicked position on the line
-            let newNode = new WebNode(x, y, webNodes.length);
-            webNodes.push(newNode);
-
-            // Store the old line's nodes before removing
-            let node1 = line.node1;
-            let node2 = line.node2;
-
-            // Remove old line
-            let index = webLines.indexOf(line);
-            if (index > -1) {
-                webLines.splice(index, 1);
-                node1.connections.delete(node2.id);
-                node2.connections.delete(node1.id);
-            }
-
-            // Add two new lines (marked as new for animation)
-            webLines.push(new WebLine(node1, newNode, false)); // Not new, these replace the old line
-            webLines.push(new WebLine(newNode, node2, false));
-
-            node1.connections.add(newNode.id);
-            newNode.connections.add(node1.id);
-            newNode.connections.add(node2.id);
-            node2.connections.add(newNode.id);
-
-            return newNode;
-        }
-
-        function findClosestNode(x, y) {
-            let closest = null;
-            let minDist = NODE_SNAP_RADIUS;
-
-            for (let node of webNodes) {
-                let d = dist(x, y, node.x, node.y);
-                // Allow targeting any node that can accept more connections
-                // This includes isolated nodes (connections.size == 0) to allow reconnection
-                if (d < minDist && node.canConnect()) {
-                    minDist = d;
-                    closest = node;
-                }
-            }
-
-            return closest;
-        }
-
-        function findClosestLine(x, y) {
-            let closest = null;
-            let minDist = LINE_SNAP_DISTANCE;
-
-            for (let line of webLines) {
-                // Only consider active lines
-                if (!line.active) continue;
-
-                let d = line.distanceToPoint(x, y);
-                if (d < minDist) {
-                    minDist = d;
-                    closest = line;
-                }
-            }
-
-            return closest;
-        }
-
-        function startWave1() {
-            currentWave = 1;
-            preySpawned = 0;
-            preyKilled = 0;
-            waveComplete = false;
-
-            // Spawn prey at intervals
-            spawnNextPrey();
-        }
-
-        function startNextWave() {
-            if (currentWave >= WAVES.length) {
-                // Victory!
-                showMessage('🎉 VICTORY! 🎉', `You've completed all ${WAVES.length} waves!<br>Final Score: ${score} | Web Health: ${Math.round(webHealth)}%`, 'center');
-                setTimeout(() => {
-                    noLoop();
-                }, 3000);
-                return;
-            }
-
-            currentWave++;
-            preySpawned = 0;
-            preyKilled = 0;
-            waveComplete = false;
-            waveBreakActive = true;
-
-            // Show wave start message at top
-            showMessage(`Wave ${currentWave}`, 'Get ready...', 'top', 3000);
-
-            // 10 second break before spawning
-            setTimeout(() => {
-                waveBreakActive = false;
-                spawnNextPrey();
-            }, 10000);
-        }
-
-        function spawnNextPrey() {
-            let currentWavePrey = WAVES[currentWave - 1];
-            if (preySpawned >= currentWavePrey.length) return;
-
-            let preyType = currentWavePrey[preySpawned];
-            let randomNode = webNodes[floor(random(1, webNodes.length))]; // Don't spawn at center
-
-            let prey = new Prey(randomNode, preyType);
-            preyList.push(prey);
-            preySpawned++;
-
-            // Schedule next spawn (2 seconds apart)
-            if (preySpawned < currentWavePrey.length) {
-                setTimeout(spawnNextPrey, 2000);
-            }
-        }
-
-        function breakWebLine(line) {
-            if (!line.active) return;
-
-            // Lines being spun are immune to destruction
-            if (line.isBeingSpun) return;
-
-            line.active = false;
-            line.opacity = 0;
-
-            // Remove connections
-            line.node1.connections.delete(line.node2.id);
-            line.node2.connections.delete(line.node1.id);
-        }
-
-        function updateWebHealthDisplay() {
-            let activeLines = webLines.filter(l => l.active).length;
-            webHealth = (activeLines / INITIAL_WEB_LINES) * 100;
-
-            let healthBar = document.getElementById('webHealthBar');
-            healthBar.style.width = `${Math.min(webHealth, 100)}%`; // Cap display at 100%
-
-            if (webHealth < 50) {
-                healthBar.classList.add('danger');
-            } else {
-                healthBar.classList.remove('danger');
-            }
-
-            // Check game over
-            if (webHealth < 30) {
-                gameOver();
-            }
-        }
-
-        function checkWaveComplete() {
-            let currentWavePrey = WAVES[currentWave - 1];
-            if (preyList.length === 0 && preySpawned >= currentWavePrey.length && !waveComplete) {
-                waveComplete = true;
-                showMessage(`Wave ${currentWave} Complete! 🎉`, `Score: ${score} | Prey Killed: ${preyKilled}/${currentWavePrey.length} | Web Health: ${Math.round(webHealth)}%`, 'bottom', 5000);
-                setTimeout(() => {
-                    startNextWave();
-                }, 5000);
-            }
-        }
-
-        function gameOver() {
-            showMessage('💀 GAME OVER 💀', `Web Integrity Failed!<br>Score: ${score} | Wave: ${currentWave} | Prey Killed: ${totalPreyKilled} | Web Health: ${Math.round(webHealth)}%`, 'center');
-            setTimeout(() => {
-                noLoop();
-            }, 3000);
-        }
-
-        function showMessage(title, subtitle = '', position = 'center', duration = 0) {
-            // Create a new message element
-            let msgId = 'msg-' + messageCounter++;
-            let msgDiv = document.createElement('div');
-            msgDiv.id = msgId;
-            msgDiv.className = 'game-message ' + position;
-
-            let titleHtml = title ? `<div class="message-title">${title}</div>` : '';
-            let subtitleHtml = subtitle ? `<div class="message-subtitle">${subtitle}</div>` : '';
-
-            msgDiv.innerHTML = titleHtml + subtitleHtml;
-            document.getElementById('ui').appendChild(msgDiv);
-
-            // Trigger fade in
-            setTimeout(() => {
-                msgDiv.classList.add('show');
-            }, 10);
-
-            // Auto-remove after duration
-            if (duration > 0) {
-                setTimeout(() => {
-                    msgDiv.classList.remove('show');
-                    setTimeout(() => {
-                        msgDiv.remove();
-                    }, 500); // Wait for fade out
-                }, duration);
-            }
-        }
-
-        function draw() {
-            // Clear canvas to show forest background
-            clear();
-
-            // Apply camera shake for boss
-            push();
-            if (webShakeIntensity > 0) {
-                translate(random(-webShakeIntensity, webShakeIntensity), random(-webShakeIntensity, webShakeIntensity));
-                webShakeIntensity *= 0.92; // Decay shake
-            }
-
-            // Update hover states
-            if (mode === 'BUILD') {
-                hoveredNode = findClosestNode(mouseX, mouseY);
-                hoveredLine = hoveredNode ? null : findClosestLine(mouseX, mouseY);
-            } else {
-                hoveredNode = null;
-                hoveredLine = null;
-            }
-
-            // Draw web
-            for (let line of webLines) {
-                line.display();
-            }
-
-            // Draw build path preview
-            if (mode === 'BUILD' && buildPath.length > 0) {
-                push();
-                stroke(255, 255, 100, 150);
-                strokeWeight(2);
-                strokeCap(ROUND);
-                drawingContext.setLineDash([5, 5]);
-
-                // Draw path segments
-                for (let i = 0; i < buildPath.length - 1; i++) {
-                    line(buildPath[i].x, buildPath[i].y, buildPath[i + 1].x, buildPath[i + 1].y);
-                }
-
-                // Draw preview to hovered position
-                let lastNode = buildPath[buildPath.length - 1];
-                if (hoveredNode && hoveredNode !== lastNode) {
-                    line(lastNode.x, lastNode.y, hoveredNode.x, hoveredNode.y);
-                } else if (hoveredLine) {
-                    let mid = hoveredLine.getMidpoint();
-                    line(lastNode.x, lastNode.y, mid.x, mid.y);
-                }
-
-                pop();
-            }
-
-            for (let node of webNodes) {
-                node.display();
-            }
-
-            // Update and draw spider
-            spider.update();
-            spider.display();
-
-            // Update and draw prey
-            for (let prey of preyList) {
-                prey.update();
-                prey.display();
-            }
-
-            pop(); // End camera shake
-
-            // Handle continuous movement in HUNT mode with 8-directional support
-            if (mode === 'HUNT') {
-                let leftPressed = keyIsDown(LEFT_ARROW);
-                let rightPressed = keyIsDown(RIGHT_ARROW);
-                let upPressed = keyIsDown(UP_ARROW);
-                let downPressed = keyIsDown(DOWN_ARROW);
-
-                // Handle diagonal movement
-                if (upPressed && rightPressed) {
-                    spider.move('UP-RIGHT');
-                } else if (upPressed && leftPressed) {
-                    spider.move('UP-LEFT');
-                } else if (downPressed && rightPressed) {
-                    spider.move('DOWN-RIGHT');
-                } else if (downPressed && leftPressed) {
-                    spider.move('DOWN-LEFT');
-                } else if (leftPressed) {
-                    spider.move('LEFT');
-                } else if (rightPressed) {
-                    spider.move('RIGHT');
-                } else if (upPressed) {
-                    spider.move('UP');
-                } else if (downPressed) {
-                    spider.move('DOWN');
-                }
-            }
-        }
-
-        function mousePressed() {
-            if (mode === 'BUILD') {
-                let lastNode = buildPath[buildPath.length - 1];
-                let targetNode = hoveredNode;
-
-                if (!targetNode && hoveredLine) {
-                    // Create new node on the line
-                    targetNode = createNodeOnLine(hoveredLine, mouseX, mouseY);
-                }
-
-                if (targetNode && targetNode !== lastNode && !buildPath.includes(targetNode)) {
-                    // Add to path and create the line
-                    if (addWebLine(lastNode, targetNode)) {
-                        buildPath.push(targetNode);
-                    }
-                }
-            }
-        }
-
-        function keyPressed() {
-            if (key === ' ') {
-                if (mode === 'HUNT') {
-                    spider.bite(); // Try to bite prey (removed stop functionality)
-                }
-            } else if (keyCode === SHIFT) {
-                // Enter build mode
-                if (mode === 'HUNT' && spider.currentNode.canConnect() && !spider.targetNode) {
-                    shiftPressed = true;
-                    mode = 'BUILD';
-                    buildPath = [spider.currentNode];
-                    document.getElementById('modeIndicator').innerText = 'Mode: BUILD';
-                    document.getElementById('modeIndicator').style.color = '#ffff00';
-                }
-            } else if (key === 'Escape') {
-                // Cancel build mode without executing
-                if (mode === 'BUILD') {
-                    mode = 'HUNT';
-                    buildPath = [];
-                    shiftPressed = false;
-                    document.getElementById('modeIndicator').innerText = 'Mode: HUNT';
-                    document.getElementById('modeIndicator').style.color = '#00ff00';
-                }
-            }
-        }
-
-        function keyReleased() {
-            if (keyCode === SHIFT) {
-                // Exit build mode and execute path
-                if (mode === 'BUILD') {
-                    shiftPressed = false;
-                    // Execute the build path
-                    if (buildPath.length > 1) {
-                        spider.startSpinning(buildPath.slice(1)); // Skip the first node (current position)
-                    } else {
-                        mode = 'HUNT';
-                        document.getElementById('modeIndicator').innerText = 'Mode: HUNT';
-                        document.getElementById('modeIndicator').style.color = '#00ff00';
-                    }
-                    buildPath = [];
-                }
-            }
-        }
-
-        function updateScore(points) {
-            score += points;
-            document.getElementById('score').innerText = `Score: ${score} | Wave: ${currentWave}`;
-        }
-
-        function updateWebHealth(health) {
-            webHealth = health;
-            let healthBar = document.getElementById('webHealthBar');
-            healthBar.style.width = `${health}%`;
-
-            if (health < 50) {
-                healthBar.classList.add('danger');
-            } else {
-                healthBar.classList.remove('danger');
-            }
-        }
-    </script>
-</body>
-</html>
